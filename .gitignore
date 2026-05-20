@@ -1,0 +1,23 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+venv/
+__pycache__/
+*.py[cod]
+
+# Build outputs
+build/
+dist/
+
+# Runtime / local app data
+rates_cache.json
+Data/Sessions/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+
+Data/
