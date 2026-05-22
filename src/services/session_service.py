@@ -97,6 +97,7 @@ def save_session(app) -> Path | None:
     session = {
         "inquiry_number": inquiry,
         "mode": mode,
+        "lane": getattr(app, "selected_lane", ""),
         "saved_at": datetime.now().isoformat(timespec="seconds"),
         "chargeable_weight": getattr(app, "chargeable_weight", 0.0),
         "vendors": vendors_data,

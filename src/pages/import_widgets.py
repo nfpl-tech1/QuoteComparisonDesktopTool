@@ -1,13 +1,84 @@
 """
 Reusable visual widgets for the import page: DropZone, ModeBadge, SubEntryRow, FileRow.
 """
+import struct
+import sys
+import tempfile
 from pathlib import Path
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QPushButton, QSizePolicy,
 )
+
+# ---------------------------------------------------------------------------
+# Outlook drag-drop helper
+# ---------------------------------------------------------------------------
+# FILEDESCRIPTORW layout (Windows SDK):
+#   dwFlags(4) clsid(16) sizel(8) pointl(8) dwFileAttributes(4)
+#   ftCreationTime(8) ftLastAccessTime(8) ftLastWriteTime(8)
+#   nFileSizeHigh(4) nFileSizeLow(4) cFileName(MAX_PATH*2=520)
+#   Total = 592 bytes
+_FD_SIZE = 592
+_FD_NAME_OFFSET = 72   # 4+16+8+8+4+8+8+8+4+4
+
+
+def _extract_outlook_drop(mime_data) -> list[str]:
+    """
+    Extract virtual .msg files from an Outlook drag-and-drop operation.
+    Saves each file to a temp directory and returns a list of real file paths.
+    Qt can only retrieve the first item's contents via QMimeData; for each
+    additional item the user will need to drop it separately.
+    """
+    try:
+        raw = bytes(mime_data.data("FileGroupDescriptorW"))
+    except Exception:
+        return []
+
+    if len(raw) < 4:
+        return []
+
+    num_items = struct.unpack_from("<I", raw, 0)[0]
+    if num_items == 0:
+        return []
+
+    # Parse filenames from the descriptor array
+    filenames: list[str] = []
+    for i in range(num_items):
+        base = 4 + i * _FD_SIZE
+        try:
+            raw_name = raw[base + _FD_NAME_OFFSET: base + _FD_NAME_OFFSET + 520]
+            name = raw_name.decode("utf-16-le").rstrip("\x00")
+        except Exception:
+            name = ""
+        if not name:
+            name = f"outlook_email_{i + 1}.msg"
+        elif not name.lower().endswith(".msg"):
+            name += ".msg"
+        filenames.append(name)
+
+    # Qt's QMimeData wraps IDataObject but only exposes lindex=0.
+    # Retrieve the first (and typically only) item's content.
+    try:
+        content = bytes(mime_data.data("FileContents"))
+    except Exception:
+        return []
+
+    if not content:
+        return []
+
+    tmp = Path(tempfile.mkdtemp(prefix="nagarkot_drop_"))
+    saved: list[str] = []
+
+    p = tmp / filenames[0]
+    try:
+        p.write_bytes(content)
+        saved.append(str(p))
+    except Exception:
+        pass
+
+    return saved
 
 
 # ---------------------------------------------------------------------------
@@ -19,10 +90,18 @@ class DropZone(QLabel):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAcceptDrops(True)
+        # Force a native HWND so we can register a COM IDropTarget on Windows
+        self.setAttribute(Qt.WA_NativeWindow)
         self.setAlignment(Qt.AlignCenter)
         self.setMinimumHeight(130)
-        self.setText("Drop PDF or MSG files here\n\nor click  Browse Files  below")
+        self.setText(
+            "Drop PDF / MSG / Excel / Word files here, or drag emails directly from Outlook\n\n"
+            "or click  Browse Files  below"
+        )
         self._idle_style()
+        # COM IDropTarget is registered in showEvent (after Qt's own
+        # RegisterDragDrop call during show), not here in __init__.
+        self._outlook_target = None
 
     def _idle_style(self):
         self.setStyleSheet("""
@@ -46,8 +125,30 @@ class DropZone(QLabel):
             }
         """)
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        # Qt calls RegisterDragDrop during its own show processing. We must
+        # register our COM target AFTER that, so use a zero-delay timer to
+        # defer until Qt's show sequence is fully complete.
+        if sys.platform == "win32":
+            QTimer.singleShot(0, self._register_com_target)
+
+    def _register_com_target(self):
+        if sys.platform != "win32":
+            return
+        try:
+            from src.services.outlook_drop_target import OutlookDropTarget
+            if self._outlook_target:
+                self._outlook_target.revoke()
+            self._outlook_target = OutlookDropTarget(self)
+        except Exception as exc:
+            print(f"[OutlookDrop] registration error: {exc}", flush=True)
+            import traceback
+            traceback.print_exc()
+
     def dragEnterEvent(self, event: QDragEnterEvent):
-        if event.mimeData().hasUrls():
+        md = event.mimeData()
+        if md.hasUrls() or md.hasFormat("FileGroupDescriptorW"):
             event.acceptProposedAction()
             self._active_style()
 
@@ -56,10 +157,18 @@ class DropZone(QLabel):
 
     def dropEvent(self, event: QDropEvent):
         self._idle_style()
-        paths = [u.toLocalFile() for u in event.mimeData().urls()]
-        valid = [p for p in paths if p.lower().endswith((".pdf", ".msg"))]
-        if valid:
-            self.files_dropped.emit(valid)
+        md = event.mimeData()
+        if md.hasFormat("FileGroupDescriptorW"):
+            saved = _extract_outlook_drop(md)
+            if saved:
+                self.files_dropped.emit(saved)
+        elif md.hasUrls():
+            paths = [u.toLocalFile() for u in md.urls()]
+            valid = [p for p in paths if p.lower().endswith(
+                (".pdf", ".msg", ".xlsx", ".xls", ".xlsm", ".docx", ".doc")
+            )]
+            if valid:
+                self.files_dropped.emit(valid)
 
 
 # ---------------------------------------------------------------------------

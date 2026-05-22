@@ -1,9 +1,11 @@
 import csv
+import json
+import logging
 import re
 from collections import defaultdict, OrderedDict
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QColor, QFont, QBrush, QAction
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -20,6 +22,8 @@ from src.pages.comparison_helpers import (
 from src.pages.comparison_dialogs import (
     _AddChargeDialog, RateFetchWorker, CustomRateDialog, _POPUP_STYLE,
 )
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -39,6 +43,7 @@ _DASH_FG  = "#90A4AE"
 _WHITE    = "#FFFFFF"
 _VHDR_BG  = "#2C3E50"
 _VHDR_FG  = "#ECEFF1"
+_META_ROW_FG = "#FFFFFF"
 _INFO_BG  = "#EEF2F7"
 
 _POPUP_STYLE = """
@@ -127,6 +132,67 @@ _MODE_COLORS = {
 }
 
 
+class _InquiryLogWorker(QThread):
+    """POST inquiry log to cloud service with checkpoints and surfaced failures."""
+
+    checkpoint = Signal(str)
+    failed = Signal(str)
+    succeeded = Signal(str)
+
+    def __init__(self, cloud_url: str, api_key: str, payload: dict, parent=None):
+        super().__init__(parent)
+        self._url = cloud_url.rstrip("/") + "/api/inquiries" if cloud_url else ""
+        self._api_key = api_key
+        self._payload = payload
+
+    def run(self):
+        if not self._url:
+            msg = "Cloud sync skipped: cloud service URL is not configured."
+            logger.info(msg)
+            self.checkpoint.emit(msg)
+            return
+        try:
+            import requests
+            summary = {
+                "inquiry_number": self._payload.get("inquiry_number", ""),
+                "mode": self._payload.get("mode", ""),
+                "lane": self._payload.get("lane", ""),
+                "vendor_count": self._payload.get("vendor_count", 0),
+                "quote_count": self._payload.get("quote_count", 0),
+            }
+            logger.info("Cloud sync start %s", json.dumps(summary, ensure_ascii=True))
+            self.checkpoint.emit("Cloud sync checkpoint: preparing request payload.")
+            headers = {"Content-Type": "application/json"}
+            if self._api_key:
+                headers["x-api-key"] = self._api_key
+            self.checkpoint.emit(f"Cloud sync checkpoint: POST {self._url}")
+            response = requests.post(self._url, json=self._payload, headers=headers, timeout=8)
+            self.checkpoint.emit(f"Cloud sync checkpoint: received HTTP {response.status_code}")
+
+            if not response.ok:
+                response_text = (response.text or "").strip()
+                detail = response_text[:300] if response_text else "No response body"
+                msg = f"Cloud sync failed: HTTP {response.status_code} - {detail}"
+                logger.error(msg)
+                self.failed.emit(msg)
+                return
+
+            try:
+                body = response.json()
+            except Exception:
+                body = {}
+            result_id = body.get("id")
+            msg = "Cloud sync complete."
+            if result_id is not None:
+                msg = f"Cloud sync complete. Inquiry log id: {result_id}."
+            logger.info("%s Response=%s", msg, json.dumps(body, ensure_ascii=True))
+            self.succeeded.emit(msg)
+        except Exception as exc:
+            msg = f"Cloud sync failed: {exc}"
+            logger.exception("Cloud sync exception")
+            self.failed.emit(msg)
+
+
 class ComparisonPage(QWidget):
     def __init__(self, app_window, parent=None):
         super().__init__(parent)
@@ -144,6 +210,9 @@ class ComparisonPage(QWidget):
         self._custom_rates: dict = {}
         self._unit_quantities: dict[str, float] = {}
         self._unit_spins: dict[str, QDoubleSpinBox] = {}
+        self._last_logged_key: tuple = ("", "")
+        self._pending_log_key: tuple = ("", "")
+        self._log_worker: _InquiryLogWorker | None = None
         self._build_ui()
 
     # ------------------------------------------------------------------
@@ -221,6 +290,11 @@ class ComparisonPage(QWidget):
         )
         sub.setStyleSheet("font-size:13px; color:#607080;")
         root.addWidget(sub)
+
+        self._cloud_log_status = QLabel("")
+        self._cloud_log_status.setWordWrap(True)
+        root.addWidget(self._cloud_log_status)
+        self._set_cloud_log_status("Cloud sync idle.", tone="muted")
 
         # Toolbar
         toolbar = QHBoxLayout()
@@ -525,13 +599,89 @@ class ComparisonPage(QWidget):
             self.rate_label.setStyleSheet("font-size:12px;color:#607080;")
             self._apply_custom_rate_style()
             self._build_table()
+        self._maybe_log_inquiry()
+
+    def _maybe_log_inquiry(self):
+        inquiry = getattr(self.app, "inquiry_number", "").strip().upper()
+        mode = getattr(self.app, "selected_quote_mode", "").strip().upper()
+        key = (inquiry, mode)
+        if not inquiry or not mode:
+            self._set_cloud_log_status("Cloud sync skipped: inquiry number or mode is missing.", tone="warning")
+            return
+        if key == self._last_logged_key or key == self._pending_log_key:
+            return
+
+        import platform
+        vendors = list(self.app.vendors.values())
+        vendor_names = sorted(set(vd.vendor_name for vd in vendors if vd.vendor_name))
+        payload = {
+            "inquiry_number": inquiry,
+            "mode": mode,
+            "lane": getattr(self.app, "selected_lane", "").strip().lower(),
+            "workstation_id": platform.node(),
+            "user_name": self.app.settings.get("user_display_name", "").strip(),
+            "vendor_count": len(vendor_names),
+            "quote_count": len(vendors),
+            "vendor_names": vendor_names,
+        }
+        cloud_url = self.app.settings.get("cloud_service_url", "").strip()
+        cloud_key = self.app.settings.get("cloud_api_key", "").strip()
+        if not cloud_url:
+            self._set_cloud_log_status(
+                "Cloud sync skipped: cloud service URL is not configured.",
+                tone="warning",
+            )
+            return
+        self._pending_log_key = key
+        self._set_cloud_log_status("Cloud sync checkpoint: queuing inquiry log request.", tone="info")
+        self._log_worker = _InquiryLogWorker(cloud_url, cloud_key, payload, self)
+        self._log_worker.checkpoint.connect(self._on_log_checkpoint)
+        self._log_worker.failed.connect(self._on_log_failed)
+        self._log_worker.succeeded.connect(self._on_log_succeeded)
+        self._log_worker.start()
 
     def refresh_service_state(self):
         if self._custom_rates:
             self._apply_custom_rate_style()
-            return
-        self.rate_label.setText(self.app.currency_service.rate_display())
-        self.rate_label.setStyleSheet("font-size:12px;color:#607080;")
+        else:
+            self.rate_label.setText(self.app.currency_service.rate_display())
+            self.rate_label.setStyleSheet("font-size:12px;color:#607080;")
+
+        cloud_url = self.app.settings.get("cloud_service_url", "").strip()
+        if not cloud_url:
+            self._set_cloud_log_status(
+                "Cloud sync disabled: configure the cloud service URL to push inquiry logs.",
+                tone="warning",
+            )
+        elif not self._pending_log_key:
+            self._set_cloud_log_status("Cloud sync idle.", tone="muted")
+
+    def _set_cloud_log_status(self, message: str, tone: str = "muted"):
+        styles = {
+            "muted": "font-size:12px;color:#607080;",
+            "info": "font-size:12px;color:#1565C0;font-weight:600;",
+            "success": "font-size:12px;color:#1B5E20;font-weight:600;",
+            "warning": "font-size:12px;color:#7B5800;font-weight:600;",
+            "error": "font-size:12px;color:#C62828;font-weight:700;",
+        }
+        self._cloud_log_status.setText(message)
+        self._cloud_log_status.setStyleSheet(styles.get(tone, styles["muted"]))
+
+    def _on_log_checkpoint(self, message: str):
+        logger.info("Cloud sync checkpoint UI: %s", message)
+        self._set_cloud_log_status(message, tone="info")
+
+    def _on_log_failed(self, message: str):
+        logger.error("Cloud sync failure surfaced: %s", message)
+        self._pending_log_key = ("", "")
+        self._set_cloud_log_status(message, tone="error")
+
+    def _on_log_succeeded(self, message: str):
+        logger.info("Cloud sync success surfaced: %s", message)
+        if self._pending_log_key != ("", ""):
+            self._last_logged_key = self._pending_log_key
+        self._pending_log_key = ("", "")
+        self._set_cloud_log_status(message, tone="success")
 
 
     def _fetch_rates(self, show_popup: bool = False):
@@ -748,6 +898,31 @@ class ComparisonPage(QWidget):
             for ch in af_charges
         )
 
+    def _set_dark_label_cell(self, row: int, col: int, text: str,
+                             align_left: bool = False, hdr_size: bool = False):
+        """Render a dark-background cell with white text via setCellWidget.
+
+        QTableWidget::item { color: ... } in the table stylesheet overrides
+        QTableWidgetItem.setForeground(), so for these meta-rows (airline /
+        shipping-line) we use a QLabel as the cell widget — its own stylesheet
+        is not shadowed by the table's ::item rule.
+        """
+        label = QLabel(text)
+        align = (Qt.AlignLeft if align_left else Qt.AlignCenter) | Qt.AlignVCenter
+        label.setAlignment(align)
+        font_size = 11 if hdr_size else 13
+        label.setStyleSheet(
+            f"QLabel{{background:{_VHDR_BG};color:{_VHDR_FG};"
+            f"font-weight:700;font-size:{font_size}px;"
+            f"padding:0 12px;border:none;}}"
+        )
+        self.table.setCellWidget(row, col, label)
+        # Keep an item so data access (exports, lookups) still works.
+        item = QTableWidgetItem(text.strip())
+        item.setBackground(QBrush(QColor(_VHDR_BG)))
+        item.setFlags(_NON_EDIT)
+        self.table.setItem(row, col, item)
+
     def _build_table(self):
         if self._current_mode == "fcl":
             vendors = [vd for vd in self.app.vendors.values() if vd.quote_type == "fcl"]
@@ -825,20 +1000,10 @@ class ComparisonPage(QWidget):
 
             if spec[0] == "airline_row":
                 self.table.setRowHeight(r_idx, 28)
-                lbl = QTableWidgetItem("  Airline")
-                lbl.setBackground(QBrush(QColor(_VHDR_BG)))
-                lbl.setForeground(QBrush(QColor(_VHDR_FG)))
-                lbl.setFont(hdr_font)
-                lbl.setFlags(_NON_EDIT)
-                self.table.setItem(r_idx, 0, lbl)
+                self._set_dark_label_cell(r_idx, 0, "  Airline",
+                                          align_left=True, hdr_size=True)
                 for c_idx, vd in enumerate(vendors, start=1):
-                    cell = QTableWidgetItem(vd.airline or "—")
-                    cell.setBackground(QBrush(QColor(_VHDR_BG)))
-                    cell.setForeground(QBrush(QColor(_VHDR_FG)))
-                    cell.setFont(bold_font)
-                    cell.setFlags(_NON_EDIT)
-                    cell.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-                    self.table.setItem(r_idx, c_idx, cell)
+                    self._set_dark_label_cell(r_idx, c_idx, vd.airline or "—")
 
             elif spec[0] == "info":
                 _, field_name, label = spec
@@ -1106,21 +1271,10 @@ class ComparisonPage(QWidget):
 
             if spec[0] == "shipping_line_row":
                 self.table.setRowHeight(r_idx, 28)
-                lbl = QTableWidgetItem("  Shipping Line")
-                lbl.setBackground(QBrush(QColor(_VHDR_BG)))
-                lbl.setForeground(QBrush(QColor(_VHDR_FG)))
-                lbl.setFont(hdr_font)
-                lbl.setFlags(_NON_EDIT)
-                self.table.setItem(r_idx, 0, lbl)
+                self._set_dark_label_cell(r_idx, 0, "  Shipping Line",
+                                          align_left=True, hdr_size=True)
                 for c_idx, vd in enumerate(ordered_vendors, start=1):
-                    sl = vd.shipping_line or "—"
-                    cell = QTableWidgetItem(sl)
-                    cell.setBackground(QBrush(QColor(_VHDR_BG)))
-                    cell.setForeground(QBrush(QColor(_VHDR_FG)))
-                    cell.setFont(bold_font)
-                    cell.setFlags(_NON_EDIT)
-                    cell.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-                    self.table.setItem(r_idx, c_idx, cell)
+                    self._set_dark_label_cell(r_idx, c_idx, vd.shipping_line or "—")
 
             elif spec[0] == "info":
                 _, field_name, label = spec
@@ -1486,10 +1640,12 @@ class ComparisonPage(QWidget):
         self.table.setHorizontalHeaderItem(col, QTableWidgetItem(name))
 
         for r_idx, spec in enumerate(self._row_specs):
-            if spec[0] in ("vendor_header", "shipping_line_row", "airline_row"):
+            if spec[0] in ("shipping_line_row", "airline_row"):
+                self._set_dark_label_cell(r_idx, col, "—")
+            elif spec[0] == "vendor_header":
                 cell = QTableWidgetItem("—")
                 cell.setBackground(QBrush(QColor(_VHDR_BG)))
-                cell.setForeground(QBrush(QColor(_VHDR_FG)))
+                cell.setForeground(QBrush(QColor(_META_ROW_FG)))
                 cell.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
                 cell.setFlags(_NON_EDIT)
                 self.table.setItem(r_idx, col, cell)

@@ -3,45 +3,130 @@ All Gemini prompt string constants — no imports needed.
 """
 
 # ---------------------------------------------------------------------------
-# Shared: inquiry filter (added to every extraction prompt)
+# Shared: inquiry filter + document format context (added to every prompt)
 # ---------------------------------------------------------------------------
 _INQUIRY_FILTER = """\
-IMPORTANT — IGNORE BUYER TEXT:
-The email chain contains exactly two parties:
-  1. Nagarkot Freight Forwarding Private Limited (the BUYER / us) — IGNORE their text.
-  2. The VENDOR / carrier — EXTRACT only their charges.
-Ignore any text that reads like an inquiry ("please quote for…", "kindly advise",
-"we need rates for…"). Chinese reply prefixes 回复/答复 mark VENDOR replies — do
-extract those. Never assign the buyer's company as the vendor_name.\
+CONTEXT — TWO PARTIES IN THIS DOCUMENT:
+  1. Nagarkot Freight Forwarding Private Limited (the BUYER / us)
+     → IGNORE their text entirely.
+  2. The VENDOR / carrier
+     → EXTRACT only their quoted charges.
+
+Ignore text that reads like an inquiry ("please quote for…", "kindly advise",
+"we need rates for…"). Chinese reply prefixes 回复/答复 mark VENDOR replies —
+do extract those. Never assign the buyer's company as the vendor_name.
+
+DOCUMENT FORMAT:
+The content provided may include any combination of:
+  - Plain email text (paragraphs, headers, signatures)
+  - [TABLE] blocks — HTML rate tables from the email body converted to JSON arrays;
+    the first object in each array contains the column headers
+  - [Excel: filename] blocks — Excel attachments converted to JSON arrays
+  - Uploaded PDF pages (rendered before this text block)
+All content is from the same vendor quote set.\
 """
 
 # ---------------------------------------------------------------------------
-# Shared: self-verification block
+# Shared: pre-return verification checklist
 # ---------------------------------------------------------------------------
 _VERIFY = """\
-BEFORE returning JSON, mentally verify each extracted row:
-  ✓ category exactly matches one of the bucket strings (copy-paste, don't retype)
-  ✓ name_of_charge is a canonical label or a short 2-5 word description
-  ✓ rate is a plain number — no $, no commas (4.60 not "$4.60")
-  ✓ minimums belong in remarks, not in rate
-  ✓ if_applicable = true ONLY when source says "optional", "if applicable",
-    "if required", "subject to approval", or similar conditional language
-  ✓ pre-calculated totals are NOT extracted as separate rows\
+BEFORE returning JSON — run this checklist:
+  Step 1 — Vendor: confirm vendor_name is the freight forwarder or carrier,
+    not the shipper/consignee. Use "Unknown Vendor" if genuinely absent.
+  Step 2 — Carriers: confirm you have one airlines / shipping_lines entry
+    per distinct carrier or airline quoted in the document.
+  Step 3 — Each charge row:
+    ✓ category is copied exactly from one of the 3 bucket strings
+    ✓ rate is a plain number — minimum / floor belongs in remarks
+    ✓ if_applicable=true ONLY when source uses explicit conditional language:
+      "optional", "if applicable", "if required", "subject to approval"
+    ✓ no row added for a pre-calculated total — only per-unit rates
+  Step 4 — Output: return the JSON object only, no preamble, no explanation.\
 """
+
+
+# ---------------------------------------------------------------------------
+# Shared: lane / shipment direction context (injected after _INQUIRY_FILTER)
+# ---------------------------------------------------------------------------
+_LANE_CONTEXT_TPL = """\
+SHIPMENT DIRECTION: {lane}
+{lane_detail}\
+"""
+
+_LANE_DETAILS = {
+    "import": (
+        "Cargo is moving INTO India (import). "
+        "Destination-side charges (import customs clearance, destination delivery, "
+        "destination THC/ATC) are the primary cost focus. "
+        "When a charge references India-side delivery or customs, classify as Destination Charges."
+    ),
+    "export": (
+        "Cargo is moving OUT OF India (export). "
+        "Origin-side charges (pre-carriage, export clearance, origin handling) are the primary cost focus. "
+        "When a charge references pick-up from shipper or export customs, classify as EXW / Origin Charges."
+    ),
+    "cross trade": (
+        "This is a CROSS TRADE shipment — both origin AND destination are outside India. "
+        "Nagarkot acts as an intermediary arranger. "
+        "Classify origin-side charges as EXW / Origin Charges and destination-side charges "
+        "as Destination Charges in the normal way."
+    ),
+}
+
 
 # ===========================================================================
 # AIR FREIGHT
 # ===========================================================================
+
 _AIR_ROLE = """\
-You are an expert air freight quote data extractor with 20+ years of experience
-in international freight forwarding. Your output feeds a live rate-comparison
-system — accuracy is critical because wrong bucketing or missing minimums
-directly affect purchasing decisions.\
+You are an expert air freight rate extractor with 20+ years of experience in
+international freight forwarding. Your sole output is structured JSON.
+
+The two most common errors in air freight extraction — avoid them:
+  1. Miscategorising a charge as "AF (Air Freight)" solely because its unit is /KG.
+     Origin trucking and trucking fuel surcharges are "EXW / Origin Charges" even
+     when charged per-KG.
+  2. Putting a minimum floor in the rate field. The per-unit rate goes in rate;
+     the floor goes in remarks.\
+"""
+
+_AIR_RATE_NOTATION = """\
+COMPACT RATE NOTATION — some vendors encode rates in a compact cell format.
+Parse these cells as follows:
+
+  Weight basis suffix (attached to the number):
+    C  = Chargeable Weight  (default — assume C when no suffix is given)
+    G  = Gross Weight
+
+  Minimum suffix — CONTEXT-DEPENDENT on the column header:
+    A slash followed by a number (e.g. "/75") encodes a minimum charge ONLY when
+    the column header itself contains "/min" or "/MIN"
+    (e.g. "FSC/min", "CTG/min", "SSC/min").
+    In columns whose header does NOT have "/min", ignore any slash-number in the
+    cell or treat the entire cell as a plain rate.
+
+  Examples in a "/min" column (e.g. column header = "FSC/min"):
+    "25C"       -> rate=25,    unit="Per KG"
+    "25G"       -> rate=25,    unit="Per KG", remarks="per gross weight"
+    "25C/75"    -> rate=25,    unit="Per KG", remarks="min 75"
+    "25G/75"    -> rate=25,    unit="Per KG", remarks="min 75; per gross weight"
+    "3.14C/330" -> rate=3.14,  unit="Per KG", remarks="min 330"
+
+  Examples in a plain column (header has no "/min"):
+    "300"       -> rate=300,   unit="Per KG"
+    "25C"       -> rate=25,    unit="Per KG"
+    "600/AWB"   -> rate=600,   unit="Per AWB"  (flat per air waybill — not a min)
+
+  GROSS vs CHARGEABLE WEIGHT:
+    For EXPORT shipments vendors may quote different rates on gross weight (G) and
+    chargeable weight (C). Extract both as separate rows when both appear.
+    For IMPORT shipments chargeable weight (C) is the standard; extract gross
+    weight rows if present and note in remarks.\
 """
 
 _AIR_BUCKETS = """\
 CHARGE BUCKETS — assign every charge to exactly one of these 3 categories.
-The string in quotes is what you MUST write in the "category" field.
+Copy the quoted string exactly into the "category" field.
 
   "EXW / Origin Charges"
       Origin pickup / pre-carriage / trucking from shipper's door,
@@ -49,134 +134,139 @@ The string in quotes is what you MUST write in the "category" field.
       AES / EEI / ENS / PLACI filings, packing / crating / labelling,
       screening or x-ray at origin, cargo handling fees at origin,
       cargo insurance (if quoted), AWB issuance fee.
+      UNIT NOTE: a /KG unit does NOT move a charge into the AF bucket —
+      origin trucking fuel surcharges are /KG and still belong here.
 
   "AF (Air Freight)"
       Air freight rate / rate slab, fuel surcharge (FSC / YQ),
       security surcharge (SSC / YR), in-flight screening,
-      CASS fees, airline-levied surcharges.
-      IMPORTANT: freight-style units such as /KG support this bucket only
-      when the charge itself is airline freight or an airline freight add-on.
-      Do NOT move origin trucking, origin handling, or origin fuel into this
-      bucket just because the unit is /KG.
+      CASS fees, airline-levied surcharges, bunker surcharges.
+      Only airline-levied charges belong here. Do NOT place origin
+      trucking, origin handling, or origin fuel surcharges in this bucket.
 
   "Destination Charges"
-      Airline terminal charge (ATC) at destination, destination airport
-      terminal handling (THC), import customs clearance,
-      delivery order (DO) / airline DO fee, endorsement fee, manifest charges,
-      destination trucking / last-mile delivery, bonded warehouse fees.\
+      Airline terminal charge (ATC) at destination, destination THC,
+      import customs clearance, delivery order (DO) / airline DO fee,
+      endorsement fee, manifest charges, destination trucking / last-mile,
+      bonded warehouse fees.\
 """
 
 _AIR_CANONICAL = """\
-CANONICAL CHARGE NAMES — normalise equivalent vendor terms to these exact labels:
+CANONICAL CHARGE NAMES — map vendor terms to these exact labels:
 
-  "Pre-carriage"        ← origin pickup, trucking, local trucking, pre-carriage,
-                           collection, drayage, origin haulage
-  "Airport Transfer"    ← airport transfer, airport drayage, CFS-to-airport,
-                           origin airport handling
-  "Export Clearance"    ← export clearance, export customs, AES filing, EEI filing,
-                           automated export system
-  "Insurance"           ← cargo insurance, air cargo insurance, CIF insurance
-  "Air Freight"         ← air freight, total air freight, air rate
-                           (single rate with no weight break)
-  "Air Freight -45"     ← air freight slab for shipments < 45 kg
-  "Air Freight +45K"    ← air freight slab for shipments ≥ 45 kg
-  "Air Freight +100K"   ← air freight slab for shipments ≥ 100 kg
-  "Air Freight +250K"   ← air freight slab for shipments ≥ 250 kg
-  "Air Freight +300K"   ← air freight slab for shipments ≥ 300 kg
-  "Air Freight +500K"   ← air freight slab for shipments ≥ 500 kg
-  "Air Freight +1000K"  ← air freight slab for shipments ≥ 1000 kg
-                           (use this "+XK" / "-X" pattern for any weight-break slab)
-  "Fuel Surcharge"      ← FSC, YQ, YQ surcharge, airline fuel surcharge, fuel levy
-                           IMPORTANT: use ONLY for AIRLINE-levied charges → "AF (Air Freight)" bucket
-  "Trucking Fuel Surcharge" ← fuel surcharge on origin trucking / pre-carriage,
-                               local fuel surcharge, TFS, fuel on local delivery,
-                               any fuel surcharge that applies to ground transport
-                               IMPORTANT: use ONLY for ORIGIN-SIDE ground charges → "EXW / Origin Charges" bucket
-  "Security Surcharge"  ← SSC, YR, security surcharge, ISSS
-  "AWB Fee"             ← AWB fee, air waybill fee, AWB issuance
-  "ENS Filing"          ← ENS, Entry Notification System filing
-  "Handling Fee"        ← handling, handling fee, cargo handling, origin handling
-  "Documentation Fee"   ← documentation, documentation fee, doc fee
-  "Airline Terminal Charge" ← ATC, airline terminal charge, airport terminal charge,
-                               terminal handling at destination airport
-  "THC"                 ← terminal handling charge, THC, destination handling charge
-  "Delivery Order"      ← delivery order, DO fee, airline DO, endorsement fee
-  "Import Clearance"    ← import customs, import clearance, customs clearance (dest)\
+  "Pre-carriage"             <- origin pickup, trucking, local trucking, pre-carriage,
+                                collection, drayage, origin haulage
+  "Airport Transfer"         <- airport transfer, airport drayage, CFS-to-airport,
+                                origin airport handling
+  "Export Clearance"         <- export clearance, export customs, AES filing,
+                                EEI filing, automated export system
+  "Insurance"                <- cargo insurance, air cargo insurance, CIF insurance
+  "Air Freight"              <- air freight, total air freight, air rate
+                                (single rate, no weight break)
+  "Air Freight -45"          <- slab for shipments < 45 kg
+  "Air Freight +45K"         <- slab for shipments >= 45 kg
+  "Air Freight +100K"        <- slab for shipments >= 100 kg
+  "Air Freight +250K"        <- slab for shipments >= 250 kg
+  "Air Freight +300K"        <- slab for shipments >= 300 kg
+  "Air Freight +500K"        <- slab for shipments >= 500 kg
+  "Air Freight +1000K"       <- slab for shipments >= 1000 kg
+                                (use this "+XK" / "-X" pattern for any slab)
+  "Fuel Surcharge"           <- FSC, YQ, airline fuel surcharge, fuel levy
+                                → "AF (Air Freight)" bucket ONLY
+  "Trucking Fuel Surcharge"  <- fuel surcharge on trucking / pre-carriage, TFS,
+                                local fuel surcharge, fuel on local delivery
+                                → "EXW / Origin Charges" bucket ONLY
+  "Security Surcharge"       <- SSC, YR, security surcharge, ISSS
+  "AWB Fee"                  <- AWB fee, air waybill fee, AWB issuance
+  "ENS Filing"               <- ENS, Entry Notification System filing
+  "Handling Fee"             <- handling, cargo handling, origin handling
+  "Documentation Fee"        <- documentation, doc fee
+  "Airline Terminal Charge"  <- ATC, airline terminal charge, airport terminal charge
+  "THC"                      <- terminal handling charge, destination handling charge
+  "Delivery Order"           <- delivery order, DO fee, airline DO, endorsement fee
+  "Import Clearance"         <- import customs, import clearance, customs clearance (dest)\
 """
 
 _AIR_EXAMPLES = """\
 FEW-SHOT EXAMPLES:
 
-┌─ A: "Min $X or $Y/kg" pattern ──────────────────────────────────────────────┐
-│ Source: "Airport Transfer: Min $85.00 or $0.25 per kg"                       │
-│ ✓ rate=0.25, unit="Per KG", remarks="min $85.00"                             │
-│ ✗ Never put the minimum as the rate                                           │
-└───────────────────────────────────────────────────────────────────────────────┘
+Example A: "Min $X or $Y/kg" — minimum vs per-unit rate
+  Source: "Airport Transfer: Min $85.00 or $0.25 per kg"
+  Reasoning: "$0.25 per kg" is the per-unit rate; "$85.00" is the floor applied when
+    the calculated total falls below it. Per-unit rate goes in rate; floor goes in remarks.
+  Extract: name="Airport Transfer", rate=0.25, unit="Per KG", remarks="min $85.00"
+  WRONG: rate=85.00  (that is the minimum floor, not the charge per-KG)
 
-┌─ B: Combined line — split into two rows ─────────────────────────────────────┐
-│ Source: "Air Freight: $4.60/kg + ENS $35.00/awb"                             │
-│ Row1: category="AF (Air Freight)", name="Air Freight", rate=4.60, unit="Per KG" │
-│ Row2: category="EXW / Origin Charges", name="ENS Filing", rate=35, unit="Per AWB" │
-└───────────────────────────────────────────────────────────────────────────────┘
+Example B: Combined line — split into separate rows
+  Source: "Air Freight: $4.60/kg + ENS $35.00/awb"
+  Reasoning: Two distinct charges joined by "+". Each becomes its own row.
+    ENS (Entry Notification System) is an export filing fee — it is an origin charge
+    even though it appears alongside an airline charge.
+  Row1: category="AF (Air Freight)", name="Air Freight", rate=4.60, unit="Per KG"
+  Row2: category="EXW / Origin Charges", name="ENS Filing", rate=35, unit="Per AWB"
 
-┌─ C: Insurance with value-based formula ──────────────────────────────────────┐
-│ Source: "Insurance - $75 min or $0.50 per $100 CIV value + freight"          │
-│ ✓ ONE row: rate=75, unit="Lumpsum", if_applicable=true,                      │
-│   remarks="min $75; or $0.50 per $100 CIV + freight charges"                 │
-└───────────────────────────────────────────────────────────────────────────────┘
+Example C: Insurance with formula
+  Source: "Insurance - $75 min or $0.50 per $100 CIV value + freight"
+  Reasoning: $75 is the minimum; the formula is variable. Use the minimum as the rate
+    with Lumpsum unit; put the formula in remarks. Insurance is typically conditional.
+  Extract: name="Insurance", rate=75, unit="Lumpsum", if_applicable=true,
+    remarks="min $75; or $0.50 per $100 CIV + freight"
 
-┌─ D: Charge explicitly excluded ──────────────────────────────────────────────┐
-│ Source: "Cargo Insurance not included unless specifically quoted."             │
-│ ✓ ONE row: rate=0, remarks="Not included in this quote", if_applicable=false  │
-└───────────────────────────────────────────────────────────────────────────────┘
+Example D: Charge explicitly excluded
+  Source: "Cargo Insurance not included unless specifically quoted."
+  Reasoning: The charge is absent from this quote but should still appear in the output
+    so the comparison table shows the exclusion clearly. Rate=0, if_applicable=false
+    (the charge is not offered, not just conditional).
+  Extract: name="Insurance", rate=0, remarks="Not included in this quote", if_applicable=false
 
-┌─ E: Per-kg rate with pre-calculated total (ignore total) ────────────────────┐
-│ Source: "Total Trucking Per Kg  $1.20  |  Total Trucking  $937.60"           │
-│ ✓ ONE row: name="Pre-carriage", rate=1.20, unit="Per KG"                     │
-│ ✗ Do NOT add a row for $937.60                                                │
-└───────────────────────────────────────────────────────────────────────────────┘
+Example E: Pre-calculated total — skip the total, keep the rate
+  Source: "Total Trucking Per Kg $1.20 | Total Trucking $937.60"
+  Reasoning: $1.20/kg is the per-unit rate. $937.60 is the pre-calculated total for a
+    specific shipment weight. Only per-unit rates belong in the output — totals vary by
+    weight and would distort cross-vendor comparisons.
+  Extract: name="Pre-carriage", rate=1.20, unit="Per KG"
+  WRONG: adding a second row with rate=937.60
 
-┌─ F: Multiple airlines quoted in same email ──────────────────────────────────┐
-│ Source:                                                                        │
-│   "On AI General to BOM (Daily direct)                                        │
-│    -45kg: SGD10.75/kg or MIN SGD105.00   FSC: SGD0.11/kg                     │
-│    On 6E General to BOM (Daily direct)                                        │
-│    +45kg: SGD4.20/kg   FSC: SGD0.15/kg"                                      │
-│                                                                                │
-│ → Two entries in "airlines":                                                  │
-│   [0] airline_name="Air India (AI)", charges=[Air Freight 10.75, FSC 0.11]   │
-│   [1] airline_name="IndiGo (6E)",   charges=[Air Freight 4.20,  FSC 0.15]   │
-│                                                                                │
-│ Shared origin/destination charges (AWB fee, screening, etc.) that apply to   │
-│ ALL airlines should be duplicated into EACH airline entry.                    │
-└───────────────────────────────────────────────────────────────────────────────┘
+Example F: Multiple airlines in same email
+  Source:
+    "On AI General to BOM (Daily direct)
+     -45kg: SGD10.75/kg or MIN SGD105.00  FSC: SGD0.11/kg
+     On 6E General to BOM (Daily direct)
+     +45kg: SGD4.20/kg  FSC: SGD0.15/kg"
+  Reasoning: Two distinct airline sections, each with different rates. Each becomes a
+    separate object in "airlines". Any charges stated before the airline sections (AWB
+    fee, screening, origin handling, etc.) apply to ALL airlines and must be duplicated
+    into every entry — the comparison system reads each entry as a standalone quote.
+  airlines[0]: airline_name="Air India (AI)",
+    charges: [Air Freight -45: rate=10.75 remarks="min SGD 105.00", Fuel Surcharge: rate=0.11]
+  airlines[1]: airline_name="IndiGo (6E)",
+    charges: [Air Freight +45K: rate=4.20, Fuel Surcharge: rate=0.15]
 
-┌─ G: Weight-slab rate table ──────────────────────────────────────────────────┐
-│ Source:                                                                        │
-│   "Airfreight rate (/kg.)                                                      │
-│    Dest  Carrier  MIN    -45    +45K   +100K  +250K  +500K  +1000K  Fuel     │
-│    BOM   EK       50.00  5.00   2.48   2.14   1.80   1.63   1.63    2.07"    │
-│                                                                                │
-│ → Extract EACH weight slab as a separate charge row:                          │
-│   Row1: name="Air Freight -45",    rate=5.00, unit="Per KG",                 │
-│          remarks="min USD 50.00"                                               │
-│   Row2: name="Air Freight +45K",   rate=2.48, unit="Per KG",                 │
-│          remarks="min USD 50.00"                                               │
-│   Row3: name="Air Freight +100K",  rate=2.14, unit="Per KG",                 │
-│          remarks="min USD 50.00"                                               │
-│   Row4: name="Air Freight +250K",  rate=1.80, unit="Per KG",                 │
-│          remarks="min USD 50.00"                                               │
-│   Row5: name="Air Freight +500K",  rate=1.63, unit="Per KG",                 │
-│          remarks="min USD 50.00"                                               │
-│   Row6: name="Air Freight +1000K", rate=1.63, unit="Per KG",                 │
-│          remarks="min USD 50.00"                                               │
-│   Row7: name="Fuel Surcharge",     rate=2.07, unit="Per KG"                  │
-│                                                                                │
-│ MIN column = minimum charge amount → put in remarks of each slab row.        │
-│ Do NOT create a separate row for MIN.                                          │
-│ Name pattern:  "Air Freight -X"  for the < X kg slab                         │
-│                "Air Freight +XK" for the ≥ X kg slab                         │
-└───────────────────────────────────────────────────────────────────────────────┘\
+Example G: Weight-slab rate table
+  Source:
+    "Airfreight rate (/kg.)
+     Dest  Carrier  MIN    -45   +45K  +100K  +250K  +500K  +1000K  Fuel
+     BOM   EK       50.00  5.00  2.48  2.14   1.80   1.63   1.63    2.07"
+  Reasoning: Each weight column is a separate pricing tier — each becomes its own row.
+    The MIN column (50.00) is the minimum per-AWB amount that applies to all slabs;
+    put it in remarks of every slab row, do NOT create a separate MIN row.
+    Fuel (2.07/kg) is a "Fuel Surcharge" row.
+  Row1: name="Air Freight -45",    rate=5.00, unit="Per KG", remarks="min USD 50.00"
+  Row2: name="Air Freight +45K",   rate=2.48, unit="Per KG", remarks="min USD 50.00"
+  Row3: name="Air Freight +100K",  rate=2.14, unit="Per KG", remarks="min USD 50.00"
+  Row4: name="Air Freight +250K",  rate=1.80, unit="Per KG", remarks="min USD 50.00"
+  Row5: name="Air Freight +500K",  rate=1.63, unit="Per KG", remarks="min USD 50.00"
+  Row6: name="Air Freight +1000K", rate=1.63, unit="Per KG", remarks="min USD 50.00"
+  Row7: name="Fuel Surcharge",     rate=2.07, unit="Per KG"
+
+Example H: /KG unit does not determine bucket
+  Source: "Origin Trucking Fuel Surcharge SGD 0.20/kg"
+  Reasoning: The charge name says "Origin Trucking" — this is a fuel levy on ground
+    transport, not airline freight. The /KG unit is simply the billing basis for
+    trucking. Category follows the charge's nature and side, not its unit.
+  Extract: category="EXW / Origin Charges", name="Trucking Fuel Surcharge",
+    rate=0.20, unit="Per KG"
+  WRONG: category="AF (Air Freight)" — a /KG unit does not make a charge airline freight.\
 """
 
 _AIR_JSON_SCHEMA = """\
@@ -186,159 +276,193 @@ Return ONLY valid JSON — no markdown fences, no explanations, no extra text:
   "vendor_name": "<freight forwarder / carrier company name — NOT shipper or consignee>",
   "airlines": [
     {
-      "airline_name": "<airline name + IATA code e.g. 'Air India (AI)', 'IndiGo (6E)', 'Emirates (EK)'; empty string if not specified>",
+      "airline_name": "<airline name + IATA code e.g. 'Air India (AI)', 'Emirates (EK)'; empty string if not specified>",
       "transit_days": "<transit time e.g. '3-5 days', or empty string>",
       "charges": [
         {
-          "category": "<one of the 3 bucket strings — exact spelling and case>",
-          "name_of_charge": "<canonical label, 2-5 words max>",
-          "currency": "<3-letter ISO code, e.g. USD / EUR / SGD / INR / AED>",
+          "category": "<exact bucket string — one of the 3 defined above>",
+          "name_of_charge": "<canonical label or short description, 2-5 words>",
+          "currency": "<3-letter ISO code e.g. USD / EUR / SGD / INR / AED>",
           "unit_of_measurement": "<Per KG / Per Shipment / Per AWB / Per HAWB / Lumpsum / Per CBM / Per Set / Per Document / Per BL>",
-          "rate": <numeric rate — plain number, no symbols>,
-          "remarks": "<minimums, conditions — empty string if none>",
-          "if_applicable": <true if conditional/optional, false if mandatory>
+          "rate": <numeric — plain number, no currency symbols or commas>,
+          "remarks": "<minimum amounts, conditions, weight-basis notes — empty string if none>",
+          "if_applicable": <true if charge is explicitly conditional/optional, otherwise false>
         }
       ]
     }
   ]
 }
 
-RULES:
-  • If rates for multiple airlines appear, create one entry per airline in "airlines"
-  • If only one airline is mentioned (or none), "airlines" has exactly one entry
-  • Shared charges (AWB fee, screening, origin handling, etc.) must be included in EVERY airline entry
+OUTPUT RULES:
+  • One entry per airline; shared charges duplicated into every entry
+  • If no airline is specified, use one entry with airline_name=""
   • Omit rows where rate=0 AND remarks="" AND if_applicable=false
   • Default currency to USD when ambiguous
-  • Do NOT extract pre-calculated totals — only extract per-unit rates
-  • Split "X $A + Y $B" combined lines into separate rows
-  • if_applicable=true for charges described as optional/conditional/if required\
+  • Split combined lines ("X $A + Y $B") into separate rows\
 """
 
 
 # ===========================================================================
 # FCL (Full Container Load)
 # ===========================================================================
+
 _FCL_ROLE = """\
-You are an expert FCL (Full Container Load) sea freight quote data extractor with
-20+ years of experience in international freight forwarding. The vendor may quote
-rates for one or more shipping lines / carriers. Your output feeds a live
-rate-comparison system — accuracy is critical.\
+You are an expert FCL (Full Container Load) sea freight rate extractor with
+20+ years of experience in international freight forwarding. Your sole output
+is structured JSON.
+
+The two most common errors in FCL extraction — avoid them:
+  1. Placing THC in the "FCL (Ocean Freight)" bucket. THC belongs to whichever
+     side of the journey it occurs on: origin THC → EXW, destination THC →
+     Destination Charges.
+  2. Using the /Container unit as a cue to assign a charge to the freight bucket.
+     Origin THC and origin handling are charged /container and still belong to
+     "EXW / Origin Charges".\
 """
 
 _FCL_BUCKETS = """\
 CHARGE BUCKETS — assign every charge to exactly one of these 3 categories.
+Copy the quoted string exactly into the "category" field.
 
   "EXW / Origin Charges"
-      Origin trucking to port, export customs clearance, VGM fee,
-      origin CFS / container freight station, container stuffing / packing,
-      cargo insurance, origin documentation, origin-side port handling,
-      booking-side admin / release / filing, export-side security charges,
-      origin THC, and origin-side congestion or restriction charges.
-      Examples include port security, B/L / OBL / telex / release handling,
-      export terminal handling, and similar origin-side operational charges.
+      Origin trucking to port, export customs clearance, VGM fee, origin CFS /
+      container freight station, container stuffing / packing, cargo insurance,
+      origin documentation, origin-side port handling, booking / release / filing
+      admin, export-side security charges, origin THC, origin-side congestion or
+      restriction charges (port security, B/L / OBL / telex release handling,
+      export terminal handling, and similar origin-side operational charges).
+      UNIT NOTE: a /Container or /BL unit does NOT move a charge here from freight.
 
   "FCL (Ocean Freight)"
-      Ocean freight base rate (FAK), BAF / bunker adjustment factor,
-      CAF / currency adjustment factor, PSS / peak season surcharge,
-      GRI / general rate increase, CIC / equipment imbalance style charges,
-      PCS / carrier freight surcharges, EIS / emergency-style carrier surcharges,
-      and similar carrier line-haul add-ons that behave like part of the
-      freight stack. Freight-style units such as /Container support this
-      bucket only when the charge is functionally part of the carrier freight.
-      IMPORTANT: do NOT place THC in this bucket by default.
+      Ocean freight base rate (FAK), BAF / bunker adjustment, CAF / currency
+      adjustment, PSS / peak season surcharge, GRI / general rate increase,
+      CIC / equipment imbalance, PCS / congestion surcharge, EIS / emergency
+      surcharges, and carrier line-haul add-ons that function as part of the
+      freight stack.
+      IMPORTANT: do NOT place THC here by default — THC is always side-based.
 
   "Destination Charges"
-      Destination THC / terminal handling charge, import customs clearance,
-      delivery order / release fee, destination trucking / inland haulage,
-      customs examination / scanning fee, endorsement fee.\
+      Destination THC, import customs clearance, delivery order / release fee,
+      destination trucking / inland haulage, customs examination / scanning fee,
+      endorsement fee.\
 """
 
 _FCL_CANONICAL = """\
-CANONICAL CHARGE NAMES:
+CANONICAL CHARGE NAMES — map vendor terms to these exact labels:
 
-  "Pre-carriage"         ← origin trucking, haulage to port, local trucking
-  "Export Clearance"     ← export customs, export clearance, AES filing
-  "VGM Fee"              ← VGM, verified gross mass, SOLAS VGM
-  "Origin CFS"           ← CFS (origin), container freight station, stuffing fee
-  "Insurance"            ← cargo insurance, marine insurance
-  "Port Security"        ← port security, port safety fee, export security fee
-  "Ocean Freight"        ← ocean freight, sea freight, base freight, FAK rate
-  "BAF"                  ← BAF, bunker adjustment, fuel surcharge, IFO, LSS, EBS, EFF
-  "PSS"                  ← PSS, peak season surcharge, high season surcharge
-  "GRI"                  ← GRI, general rate increase
-  "CAF"                  ← CAF, currency adjustment factor
-  "CIC"                  ← CIC, container imbalance charge, equipment imbalance
-  "PCS"                  ← PCS, peak congestion surcharge, premium carrier surcharge
-  "Emergency Surcharge"  ← EES, EIS, emergency surcharge, war surcharge
-  "Port Congestion"      ← port congestion, congestion surcharge, congestion levy
-  "B/L Fee"              ← B/L fee, bill of lading, OBL fee, documentation release
-  "Telex Release Fee"    ← telex release, surrender fee, release fee
-  "Documentation Fee"    ← doc fee, documentation, carrier documentation
-  "THC"                  ← THC, terminal handling charge, terminal handling
-  "Import Clearance"     ← import customs, import clearance, customs clearance
-  "Delivery Order"       ← delivery order, DO fee, release fee, endorsement
-  "Destination Trucking" ← destination trucking, inland delivery, last mile\
+  "Pre-carriage"         <- origin trucking, haulage to port, local trucking
+  "Export Clearance"     <- export customs, export clearance, AES filing
+  "VGM Fee"              <- VGM, verified gross mass, SOLAS VGM
+  "Origin CFS"           <- CFS (origin), container freight station, stuffing fee
+  "Insurance"            <- cargo insurance, marine insurance
+  "Port Security"        <- port security, port safety fee, export security fee
+  "Ocean Freight"        <- ocean freight, sea freight, base freight, FAK rate
+  "BAF"                  <- BAF, bunker adjustment, fuel surcharge, IFO, LSS, EBS, EFF
+  "PSS"                  <- PSS, peak season surcharge, high season surcharge
+  "GRI"                  <- GRI, general rate increase
+  "CAF"                  <- CAF, currency adjustment factor
+  "CIC"                  <- CIC, container imbalance charge, equipment imbalance
+  "PCS"                  <- PCS, peak congestion surcharge, premium carrier surcharge
+  "Emergency Surcharge"  <- EES, EIS, emergency surcharge, war surcharge
+  "Port Congestion"      <- port congestion, congestion surcharge, congestion levy
+  "B/L Fee"              <- B/L fee, bill of lading, OBL fee, documentation release
+  "Telex Release Fee"    <- telex release, surrender fee, release fee
+  "Documentation Fee"    <- doc fee, documentation, carrier documentation
+  "THC"                  <- THC, terminal handling charge, terminal handling
+  "Import Clearance"     <- import customs, import clearance, customs clearance
+  "Delivery Order"       <- delivery order, DO fee, release fee, endorsement
+  "Destination Trucking" <- destination trucking, inland delivery, last mile\
 """
 
 _FCL_CONTAINER_SELECTION = """\
 CONTAINER TYPE SELECTION — CRITICAL:
-1. Find the INQUIRY section at the bottom of the email chain (written by Nagarkot
-   Freight Forwarding Private Limited). Look for "No. & Type of Containers".
-2. Mapping inquiry language → container_type and unit:
-   "1×20ft" / "1*20ft" / "20' GP"  → container_type="20ft GP",  unit="Per Container (20ft)"
-   "1×40ft" / "1*40ft" / "40' GP"  → container_type="40ft GP",  unit="Per Container (40ft)"
-   "1×40HC" / "1*40HC" / "40' HC" / "40HQ"  → container_type="40ft HC", unit="Per Container (40ft HC)"
-3. When the vendor's reply is a TABLE with columns for multiple sizes
-   (e.g. 20GP | 40GP | 40HQ), read ONLY the column that matches the inquiry's
-   requested container type. Ignore the other columns.
-4. Set "container_type" in the JSON to the REQUESTED type — not the vendor's full list.\
+  1. Find the INQUIRY section at the bottom of the email chain (written by
+     Nagarkot Freight Forwarding Private Limited). Look for "No. & Type of Containers".
+  2. Map inquiry language to container_type and unit:
+       "1x20ft" / "1*20ft" / "20' GP"           -> container_type="20ft GP",  unit="Per Container (20ft)"
+       "1x40ft" / "1*40ft" / "40' GP"           -> container_type="40ft GP",  unit="Per Container (40ft)"
+       "1x40HC" / "1*40HC" / "40' HC" / "40HQ" -> container_type="40ft HC", unit="Per Container (40ft HC)"
+  3. When the vendor shows a TABLE with columns for multiple sizes (20GP | 40GP | 40HQ),
+     read ONLY the column that matches the requested type. Ignore all other columns.
+  4. Set container_type to the REQUESTED size — not the vendor's full list.\
 """
 
 _FCL_EXAMPLES = """\
 FEW-SHOT EXAMPLES:
 
-┌─ A: Single shipping line quote ─────────────────────────────────────────────┐
-│ Source: "Maersk  40ft GP:  Ocean Freight $850 + BAF $120 + Dest THC $165"   │
-│ → shipping_line="Maersk", container_type="40ft GP"                           │
-│ Row1: category="FCL (Ocean Freight)", name="Ocean Freight",                  │
-│       rate=850, unit="Per Container (40ft)"                                  │
-│ Row2: category="FCL (Ocean Freight)", name="BAF",                            │
-│       rate=120, unit="Per Container (40ft)"                                  │
-│ Row3: category="Destination Charges", name="THC",                            │
-│       rate=165, unit="Per Container (40ft)"                                  │
-└───────────────────────────────────────────────────────────────────────────────┘
+Example A: Basic FCL quote — THC is destination, not freight
+  Source: "Maersk 40ft GP: Ocean Freight $850 + BAF $120 + Dest THC $165"
+  Reasoning: BAF is a carrier freight surcharge -> "FCL (Ocean Freight)". Destination THC
+    is terminal handling at the arrival port -> "Destination Charges". THC is NEVER ocean
+    freight — its bucket is always determined by which side of the journey it occurs on.
+  shipping_line="Maersk", container_type="40ft GP"
+  Row1: category="FCL (Ocean Freight)", name="Ocean Freight", rate=850, unit="Per Container (40ft)"
+  Row2: category="FCL (Ocean Freight)", name="BAF",           rate=120, unit="Per Container (40ft)"
+  Row3: category="Destination Charges", name="THC",           rate=165, unit="Per Container (40ft)"
 
-┌─ B: Multiple shipping lines from same vendor ────────────────────────────────┐
-│ Source: "CMA-CGM 40GP: $920 | Evergreen 40GP: $880 | COSCO 40GP: $860"      │
-│ → Three separate objects inside "shipping_lines" array                        │
-│   Each with its own shipping_line name and charges                            │
-└───────────────────────────────────────────────────────────────────────────────┘
+Example B: Origin admin charges — stay in EXW even when listed with freight
+  Source: "Ocean Freight USD 2035/40HC + B/L fee USD 15/bl + Port Security USD 12/container"
+  Reasoning: B/L fee is origin-side export documentation -> "EXW / Origin Charges". Port
+    Security is an origin-side levy -> "EXW / Origin Charges". Neither belongs in the
+    freight bucket despite appearing in the same line.
+  Row1: category="FCL (Ocean Freight)", name="Ocean Freight", rate=2035, unit="Per Container (40ft HC)"
+  Row2: category="EXW / Origin Charges", name="B/L Fee",     rate=15,   unit="Per BL"
+  Row3: category="EXW / Origin Charges", name="Port Security", rate=12,  unit="Per Container (40ft HC)"
 
-┌─ C: Extra container size mentioned but not quoted ───────────────────────────┐
-│ Source: "40ft GP: $850; 40ft HC available on request"                        │
-│ → container_type="40ft GP", remarks on ocean freight="40ft HC on request"    │
-│   Do NOT create a second shipping_line entry for 40ft HC                      │
-└───────────────────────────────────────────────────────────────────────────────┘
+Example C: THC ambiguity — side determines bucket
+  Source: "Origin THC USD 110/40HC + Destination THC USD 165/40HC + GRI USD 95/40HC"
+  Reasoning: "Origin THC" is export-side terminal handling -> "EXW / Origin Charges".
+    "Destination THC" is import-side -> "Destination Charges". GRI is a carrier-side rate
+    increase added to the freight stack -> "FCL (Ocean Freight)".
+  Row1: category="EXW / Origin Charges", name="THC", rate=110, unit="Per Container (40ft HC)"
+  Row2: category="Destination Charges",  name="THC", rate=165, unit="Per Container (40ft HC)"
+  Row3: category="FCL (Ocean Freight)",  name="GRI", rate=95,  unit="Per Container (40ft HC)"
 
-┌─ D: Per-container unit selection ────────────────────────────────────────────┐
-│ 20ft container  → unit="Per Container (20ft)"                                │
-│ 40ft GP         → unit="Per Container (40ft)"                                │
-│ 40ft HC / HQ    → unit="Per Container (40ft HC)"                             │
-│ Per B/L         → unit="Per BL"                                              │
-└───────────────────────────────────────────────────────────────────────────────┘
+Example D: /Container unit does not determine bucket
+  Source: "EIS USD 85/container + BAF USD 120/container + Origin THC USD 35/container"
+  Reasoning: EIS and BAF are carrier line-haul surcharges -> "FCL (Ocean Freight)". Origin
+    THC is origin terminal handling — the /container unit does not move it into freight.
+    The charge's nature and side determine the bucket, not the unit.
+  Row1: category="FCL (Ocean Freight)",  name="Emergency Surcharge", rate=85,  unit="Per Container (40ft)"
+  Row2: category="FCL (Ocean Freight)",  name="BAF",                 rate=120, unit="Per Container (40ft)"
+  Row3: category="EXW / Origin Charges", name="THC",                 rate=35,  unit="Per Container (40ft)"
+  WRONG: putting Origin THC in "FCL (Ocean Freight)" because it is charged /container.
 
-┌─ E: Rate table with multiple container sizes — INQUIRY says 20ft ────────────┐
-│ Inquiry: "No. & Type of Containers: 1*20ft"                                  │
-│ Vendor table:                                                                 │
-│   Carrier  ETD         20GP  40GP  40HQ   Free days                          │
-│   KMTC     2026-03-24  1420  1290  1290   14                                 │
-│ → shipping_line="KMTC", container_type="20ft GP"                             │
-│ → Ocean Freight rate = 1420 (the 20GP column — NOT 1290)                     │
-│ → etd="2026-03-24", transit_days="21 days", free_days_destination=14         │
-│                                                                               │
-│ WRONG:  rate=1290  (that is the 40GP/40HQ price)                             │
-│ CORRECT: rate=1420 (that is the 20GP price)                                  │
-└───────────────────────────────────────────────────────────────────────────────┘\
+Example E: Multiple shipping lines — one entry per carrier
+  Source: "CMA-CGM 40GP: $920 | Evergreen 40GP: $880 | COSCO 40GP: $860"
+  Reasoning: Each carrier has its own quoted rate. Three separate objects in "shipping_lines",
+    each with its own shipping_line and charges. Non-carrier charges (THC, customs, etc.)
+    stated once in the email must be duplicated into every carrier entry.
+  [0] shipping_line="CMA CGM",  Ocean Freight rate=920
+  [1] shipping_line="Evergreen", Ocean Freight rate=880
+  [2] shipping_line="COSCO",     Ocean Freight rate=860
+
+Example F: Size mentioned but not priced — no extra entry
+  Source: "40ft GP: $850; 40ft HC available on request"
+  Reasoning: Only 40ft GP has a firm rate. 40ft HC is mentioned but unpriced — create no
+    separate entry for it. Note the availability in remarks on the Ocean Freight row.
+  container_type="40ft GP"
+  Row1: name="Ocean Freight", rate=850, unit="Per Container (40ft)",
+    remarks="40ft HC available on request"
+  WRONG: creating a second shipping_line entry with empty or 0 rates for 40ft HC.
+
+Example G: Unit selection reference
+  20ft container  -> unit="Per Container (20ft)"
+  40ft GP         -> unit="Per Container (40ft)"
+  40ft HC / HQ    -> unit="Per Container (40ft HC)"
+  Per B/L charge  -> unit="Per BL"
+
+Example H: Multi-column rate table — read only the requested column
+  Inquiry: "No. & Type of Containers: 1*20ft"
+  Vendor table:
+    Carrier  ETD         20GP  40GP  40HQ  Free days
+    KMTC     2026-03-24  1420  1290  1290  14
+  Reasoning: The inquiry requests 20ft GP. When the vendor shows multiple container
+    columns, extract ONLY the column matching the requested size. The 40GP / 40HQ
+    columns are irrelevant to this comparison.
+  shipping_line="KMTC", container_type="20ft GP", etd="2026-03-24", free_days_destination=14
+  Ocean Freight rate=1420  (the 20GP column)
+  WRONG: rate=1290 — that is the 40GP/40HQ price, not the requested 20ft rate.\
 """
 
 _FCL_JSON_SCHEMA = """\
@@ -356,25 +480,24 @@ Return ONLY valid JSON — no markdown fences, no explanations, no extra text:
       "free_days_destination": <integer free days at destination port, 0 if not mentioned>,
       "charges": [
         {
-          "category": "<one of the 3 FCL bucket strings — exact spelling>",
-          "name_of_charge": "<canonical label, 2-5 words max>",
+          "category": "<exact bucket string — one of the 3 defined above>",
+          "name_of_charge": "<canonical label or short description, 2-5 words>",
           "currency": "<3-letter ISO code>",
           "unit_of_measurement": "<Per Container (20ft) / Per Container (40ft) / Per Container (40ft HC) / Per BL / Per Shipment / Lumpsum>",
           "rate": <numeric rate for the REQUESTED container type — plain number, no symbols>,
           "remarks": "<minimums, conditions — empty string if none>",
-          "if_applicable": <true if optional/conditional, false if mandatory>
+          "if_applicable": <true if explicitly conditional/optional, otherwise false>
         }
       ]
     }
   ]
 }
 
-RULES:
-  • One entry in shipping_lines per distinct carrier / rate option
-  • If vendor doesn't specify carrier, use shipping_line=""
-  • container_type = the REQUESTED container size from the inquiry (NOT all sizes vendor lists)
-  • When vendor shows a multi-column rate table, extract ONLY the requested container's column
-  • Omit charge rows where rate=0 AND remarks="" AND if_applicable=false
+OUTPUT RULES:
+  • One entry per distinct carrier / rate option
+  • container_type = the REQUESTED size from the inquiry
+  • When vendor shows a multi-column table, extract ONLY the requested column
+  • Omit rows where rate=0 AND remarks="" AND if_applicable=false
   • Default currency to USD when ambiguous\
 """
 
@@ -382,70 +505,91 @@ RULES:
 # ===========================================================================
 # LCL (Less than Container Load)
 # ===========================================================================
+
 _LCL_ROLE = """\
-You are an expert LCL (Less than Container Load / groupage) sea freight quote
-data extractor. LCL rates are typically quoted per CBM or on W/M basis
-(weight-or-measure: 1 CBM = 1,000 KG; charge whichever is greater). Your output
-feeds a live rate-comparison system — accuracy is critical.\
+You are an expert LCL (Less than Container Load / groupage) sea freight rate
+extractor with 20+ years of experience. LCL rates are typically quoted per CBM
+or on a W/M basis (weight-or-measure: charge whichever of 1 CBM or 1,000 KG
+produces a higher value). Your sole output is structured JSON.
+
+The most common error in LCL extraction — avoid it:
+  Categorising THC or destination CFS as "LCL (Ocean Freight)" because the unit
+  is /CBM. The unit does not determine the bucket — the charge's side (origin vs
+  destination) does.\
 """
 
 _LCL_BUCKETS = """\
 CHARGE BUCKETS — assign every charge to exactly one of these 3 categories.
+Copy the quoted string exactly into the "category" field.
 
   "EXW / Origin Charges"
       Origin trucking, export customs clearance, origin CFS / receiving charge,
-      cargo insurance, origin documentation.
+      cargo insurance, origin documentation, origin-side terminal handling.
 
   "LCL (Ocean Freight)"
-      LCL ocean freight rate per CBM or W/M, BAF per CBM, B/L fee,
-      carrier documentation fee, emergency / congestion surcharges,
-      origin THC if quoted by carrier.
+      LCL ocean freight rate per CBM or W/M, BAF per CBM, carrier documentation
+      tied to the line-haul, and freight-like carrier surcharges that function
+      as part of the freight stack.
+      IMPORTANT: /CBM or /Ton unit does NOT move THC or destination CFS here —
+      the charge's side determines the bucket, not the unit.
 
   "Destination Charges"
-      Destination CFS / unstuffing / deconsolidation fee, import customs,
+      Destination CFS / unstuffing / deconsolidation, import customs clearance,
       delivery order fee, destination THC, destination trucking / last mile.\
 """
 
 _LCL_CANONICAL = """\
-CANONICAL CHARGE NAMES:
+CANONICAL CHARGE NAMES — map vendor terms to these exact labels:
 
-  "Pre-carriage"        ← origin trucking, collection, pre-carriage
-  "Export Clearance"    ← export customs, export clearance
-  "Origin CFS"          ← origin CFS, receiving charge, stuffing, CFS handling
-  "Insurance"           ← cargo insurance, marine insurance
-  "Ocean Freight"       ← ocean freight, LCL freight, groupage freight, sea freight
-  "BAF"                 ← BAF, bunker adjustment, fuel surcharge (sea)
-  "B/L Fee"             ← B/L fee, HAWB fee, bill of lading, doc release fee
-  "Emergency Surcharge" ← EES, EIS, congestion surcharge, emergency levy
-  "Documentation Fee"   ← doc fee, documentation
-  "Destination CFS"     ← destination CFS, CFS delivery, unstuffing, deconsolidation
-  "THC"                 ← THC, terminal handling (destination)
-  "Import Clearance"    ← import customs, customs clearance
-  "Delivery Order"      ← delivery order, DO fee\
+  "Pre-carriage"        <- origin trucking, collection, pre-carriage
+  "Export Clearance"    <- export customs, export clearance
+  "Origin CFS"          <- origin CFS, receiving charge, stuffing, CFS handling
+  "Insurance"           <- cargo insurance, marine insurance
+  "Ocean Freight"       <- ocean freight, LCL freight, groupage freight, sea freight
+  "BAF"                 <- BAF, bunker adjustment, fuel surcharge (sea)
+  "B/L Fee"             <- B/L fee, HAWB fee, bill of lading, doc release fee
+  "Emergency Surcharge" <- EES, EIS, congestion surcharge, emergency levy
+  "Documentation Fee"   <- doc fee, documentation
+  "Destination CFS"     <- destination CFS, CFS delivery, unstuffing, deconsolidation
+  "THC"                 <- THC, terminal handling, terminal handling charge
+  "Import Clearance"    <- import customs, customs clearance
+  "Delivery Order"      <- delivery order, DO fee\
 """
 
 _LCL_EXAMPLES = """\
 FEW-SHOT EXAMPLES:
 
-┌─ A: Standard LCL quote ─────────────────────────────────────────────────────┐
-│ Source: "LCL freight: USD 18/CBM, BAF USD 5/CBM, B/L USD 45"               │
-│ Row1: category="LCL (Ocean Freight)", name="Ocean Freight",                  │
-│       rate=18, unit="Per CBM"                                                │
-│ Row2: category="LCL (Ocean Freight)", name="BAF", rate=5, unit="Per CBM"    │
-│ Row3: category="LCL (Ocean Freight)", name="B/L Fee", rate=45, unit="Per BL" │
-└───────────────────────────────────────────────────────────────────────────────┘
+Example A: Standard LCL quote
+  Source: "LCL freight: USD 18/CBM, BAF USD 5/CBM, B/L USD 45"
+  Reasoning: Ocean freight and BAF are carrier line-haul charges -> "LCL (Ocean Freight)".
+    B/L fee is carrier documentation tied to the line-haul -> also "LCL (Ocean Freight)".
+  Row1: category="LCL (Ocean Freight)", name="Ocean Freight", rate=18, unit="Per CBM"
+  Row2: category="LCL (Ocean Freight)", name="BAF",           rate=5,  unit="Per CBM"
+  Row3: category="LCL (Ocean Freight)", name="B/L Fee",       rate=45, unit="Per BL"
 
-┌─ B: W/M rate quoted ─────────────────────────────────────────────────────────┐
-│ Source: "Ocean freight USD 22 W/M"                                            │
-│ ✓ rate=22, unit="Per CBM", remarks="W/M basis (1 CBM = 1,000 KG)"           │
-│   Use Per CBM as the canonical unit for W/M rates                             │
-└───────────────────────────────────────────────────────────────────────────────┘
+Example B: W/M rate
+  Source: "Ocean freight USD 22 W/M"
+  Reasoning: W/M (Weight-or-Measure) means the carrier charges on whichever of weight
+    (per metric ton) or volume (per CBM) produces a higher value for the shipment.
+    Use "Per CBM" as the canonical unit and note the W/M basis in remarks.
+  Extract: name="Ocean Freight", rate=22, unit="Per CBM",
+    remarks="W/M basis (1 CBM = 1,000 KG)"
 
-┌─ C: Per-ton and per-CBM listed separately (W/M) ─────────────────────────────┐
-│ Source: "Freight: $20/cbm or $20/ton (W/M)"                                   │
-│ ✓ ONE row: rate=20, unit="Per CBM",                                           │
-│   remarks="W/M: per CBM or per Ton, whichever greater"                        │
-└───────────────────────────────────────────────────────────────────────────────┘\
+Example C: Per-ton and per-CBM quoted separately for same W/M rate
+  Source: "Freight: $20/cbm or $20/ton (W/M)"
+  Reasoning: Same rate expressed for both CBM and ton — this is a single W/M rate, not
+    two separate charges. One row with "Per CBM" and the W/M note in remarks.
+  Extract: name="Ocean Freight", rate=20, unit="Per CBM",
+    remarks="W/M: per CBM or per Ton, whichever greater"
+
+Example D: /CBM unit does not determine bucket
+  Source: "Destination THC USD 12/cbm + Destination CFS USD 18/cbm"
+  Reasoning: Both charges are destination-side. The /CBM unit is merely the billing
+    basis — it does not pull these charges into the LCL freight bucket. The charge's
+    side of the journey determines the bucket.
+  Row1: category="Destination Charges", name="THC",             rate=12, unit="Per CBM"
+  Row2: category="Destination Charges", name="Destination CFS", rate=18, unit="Per CBM"
+  WRONG: category="LCL (Ocean Freight)" because the unit is /CBM.\
 """
 
 _LCL_JSON_SCHEMA = """\
@@ -459,215 +603,19 @@ Return ONLY valid JSON — no markdown fences, no explanations, no extra text:
   "free_days_destination": <integer free days at destination port, 0 if not mentioned>,
   "charges": [
     {
-      "category": "<one of the 3 LCL bucket strings — exact spelling>",
-      "name_of_charge": "<canonical label, 2-5 words max>",
+      "category": "<exact bucket string — one of the 3 defined above>",
+      "name_of_charge": "<canonical label or short description, 2-5 words>",
       "currency": "<3-letter ISO code>",
       "unit_of_measurement": "<Per CBM / Per Ton / Per BL / Per Shipment / Lumpsum>",
-      "rate": <numeric, no symbols>,
+      "rate": <numeric — plain number, no symbols>,
       "remarks": "<minimums, W/M notes, conditions — empty string if none>",
-      "if_applicable": <true if optional/conditional, false if mandatory>
+      "if_applicable": <true if explicitly conditional/optional, otherwise false>
     }
   ]
 }
 
-RULES:
+OUTPUT RULES:
   • Omit rows where rate=0 AND remarks="" AND if_applicable=false
   • Default currency to USD when ambiguous
   • W/M rates: use unit="Per CBM" and put W/M rule in remarks\
 """
-
-
-# ---------------------------------------------------------------------------
-# Prompt overrides for 2026-05 bucketing rules
-# ---------------------------------------------------------------------------
-_AIR_EXAMPLES = """\
-FEW-SHOT EXAMPLES:
-
-Example A: "Min $X or $Y/kg" pattern
-  Source: "Airport Transfer: Min $85.00 or $0.25 per kg"
-  -> rate=0.25, unit="Per KG", remarks="min $85.00"
-  Never put the minimum as the rate.
-
-Example B: Combined line - split into two rows
-  Source: "Air Freight: $4.60/kg + ENS $35.00/awb"
-  Row1: category="AF (Air Freight)", name="Air Freight", rate=4.60, unit="Per KG"
-  Row2: category="EXW / Origin Charges", name="ENS Filing", rate=35, unit="Per AWB"
-
-Example C: Insurance with value-based formula
-  Source: "Insurance - $75 min or $0.50 per $100 CIV value + freight"
-  -> ONE row: rate=75, unit="Lumpsum", if_applicable=true
-  remarks="min $75; or $0.50 per $100 CIV + freight charges"
-
-Example D: Charge explicitly excluded
-  Source: "Cargo Insurance not included unless specifically quoted."
-  -> ONE row: rate=0, remarks="Not included in this quote", if_applicable=false
-
-Example E: Per-kg rate with pre-calculated total (ignore total)
-  Source: "Total Trucking Per Kg $1.20 | Total Trucking $937.60"
-  -> ONE row: name="Pre-carriage", rate=1.20, unit="Per KG"
-  Do NOT add a row for $937.60.
-
-Example F: Multiple airlines quoted in same email
-  Source:
-    "On AI General to BOM (Daily direct)
-     -45kg: SGD10.75/kg or MIN SGD105.00 FSC: SGD0.11/kg
-     On 6E General to BOM (Daily direct)
-     +45kg: SGD4.20/kg FSC: SGD0.15/kg"
-  -> Two entries in "airlines":
-     [0] airline_name="Air India (AI)", charges=[Air Freight 10.75, FSC 0.11]
-     [1] airline_name="IndiGo (6E)", charges=[Air Freight 4.20, FSC 0.15]
-  Shared origin/destination charges must be duplicated into each airline entry.
-
-Example G: Weight-slab rate table
-  Source:
-    "Airfreight rate (/kg.)
-     Dest Carrier MIN -45 +45K +100K +250K +500K +1000K Fuel
-     BOM EK 50.00 5.00 2.48 2.14 1.80 1.63 1.63 2.07"
-  -> Extract EACH weight slab as a separate charge row.
-  MIN belongs in remarks of each slab row.
-
-Example H: /KG does not automatically make an origin charge freight
-  Source: "Origin Trucking Fuel Surcharge SGD 0.20/kg"
-  -> category="EXW / Origin Charges", name="Trucking Fuel Surcharge", rate=0.20, unit="Per KG"
-  WRONG: putting this in "AF (Air Freight)" only because the unit is /KG\
-"""
-
-_FCL_EXAMPLES = """\
-FEW-SHOT EXAMPLES:
-
-Example A: Single shipping line quote
-  Source: "Maersk 40ft GP: Ocean Freight $850 + BAF $120 + Dest THC $165"
-  -> shipping_line="Maersk", container_type="40ft GP"
-  Row1: category="FCL (Ocean Freight)", name="Ocean Freight", rate=850, unit="Per Container (40ft)"
-  Row2: category="FCL (Ocean Freight)", name="BAF", rate=120, unit="Per Container (40ft)"
-  Row3: category="Destination Charges", name="THC", rate=165, unit="Per Container (40ft)"
-
-Example B: Origin-side port/admin charges stay in EXW
-  Source: "Ocean Freight USD 2035/40HC + B/L fee USD 15/bl + Port Security USD 12/container"
-  Row1: category="FCL (Ocean Freight)", name="Ocean Freight", rate=2035
-  Row2: category="EXW / Origin Charges", name="B/L Fee", rate=15, unit="Per BL"
-  Row3: category="EXW / Origin Charges", name="Port Security", rate=12, unit="Per Container (40ft HC)"
-
-Example C: THC is side-based, never default freight
-  Source: "Origin THC USD 110/40HC + Destination THC USD 165/40HC + GRI USD 95/40HC"
-  Row1: category="EXW / Origin Charges", name="THC", rate=110
-  Row2: category="Destination Charges", name="THC", rate=165
-  Row3: category="FCL (Ocean Freight)", name="GRI", rate=95
-
-Example D: /Container supports freight only when charge is freight-like
-  Source: "EIS USD 85/container + BAF USD 120/container + Origin THC USD 35/container"
-  Row1: category="FCL (Ocean Freight)", name="Emergency Surcharge", rate=85
-  Row2: category="FCL (Ocean Freight)", name="BAF", rate=120
-  Row3: category="EXW / Origin Charges", name="THC", rate=35
-  WRONG: putting Origin THC in freight just because it is /container
-
-Example E: Multiple shipping lines from same vendor
-  Source: "CMA-CGM 40GP: $920 | Evergreen 40GP: $880 | COSCO 40GP: $860"
-  -> Three separate objects inside "shipping_lines" array, each with its own shipping_line and charges
-
-Example F: Extra container size mentioned but not quoted
-  Source: "40ft GP: $850; 40ft HC available on request"
-  -> container_type="40ft GP", remarks on ocean freight="40ft HC on request"
-  Do NOT create a second shipping_line entry for 40ft HC
-
-Example G: Per-container unit selection
-  20ft container  -> unit="Per Container (20ft)"
-  40ft GP         -> unit="Per Container (40ft)"
-  40ft HC / HQ    -> unit="Per Container (40ft HC)"
-  Per B/L         -> unit="Per BL"
-
-Example H: Rate table with multiple container sizes - INQUIRY says 20ft
-  Inquiry: "No. & Type of Containers: 1*20ft"
-  Vendor table:
-    Carrier  ETD         20GP  40GP  40HQ   Free days
-    KMTC     2026-03-24  1420  1290  1290   14
-  -> shipping_line="KMTC", container_type="20ft GP"
-  -> Ocean Freight rate = 1420 (the 20GP column - NOT 1290)
-  -> etd="2026-03-24", transit_days="21 days", free_days_destination=14
-  WRONG: rate=1290
-  CORRECT: rate=1420\
-"""
-
-_LCL_BUCKETS = """\
-CHARGE BUCKETS — assign every charge to exactly one of these 3 categories.
-
-  "EXW / Origin Charges"
-      Origin trucking, export customs clearance, origin CFS / receiving charge,
-      cargo insurance, origin documentation, and origin-side terminal handling.
-
-  "LCL (Ocean Freight)"
-      LCL ocean freight rate per CBM or W/M, BAF per CBM,
-      carrier documentation tied to the line-haul, and freight-like carrier
-      surcharges that functionally belong to the freight stack.
-      IMPORTANT: /CBM or /Ton supports this bucket only when the charge itself
-      is freight-like. Do NOT move THC or destination CFS here just because the
-      unit is /CBM.
-
-  "Destination Charges"
-      Destination CFS / unstuffing / deconsolidation fee, import customs,
-      delivery order fee, destination THC, destination trucking / last mile.\
-"""
-
-_LCL_CANONICAL = """\
-CANONICAL CHARGE NAMES:
-
-  "Pre-carriage"        ← origin trucking, collection, pre-carriage
-  "Export Clearance"    ← export customs, export clearance
-  "Origin CFS"          ← origin CFS, receiving charge, stuffing, CFS handling
-  "Insurance"           ← cargo insurance, marine insurance
-  "Ocean Freight"       ← ocean freight, LCL freight, groupage freight, sea freight
-  "BAF"                 ← BAF, bunker adjustment, fuel surcharge (sea)
-  "B/L Fee"             ← B/L fee, HAWB fee, bill of lading, doc release fee
-  "Emergency Surcharge" ← EES, EIS, congestion surcharge, emergency levy
-  "Documentation Fee"   ← doc fee, documentation
-  "Destination CFS"     ← destination CFS, CFS delivery, unstuffing, deconsolidation
-  "THC"                 ← THC, terminal handling, terminal handling charge
-  "Import Clearance"    ← import customs, customs clearance
-  "Delivery Order"      ← delivery order, DO fee\
-"""
-
-_LCL_EXAMPLES = """\
-FEW-SHOT EXAMPLES:
-
-Example A: Standard LCL quote
-  Source: "LCL freight: USD 18/CBM, BAF USD 5/CBM, B/L USD 45"
-  Row1: category="LCL (Ocean Freight)", name="Ocean Freight", rate=18, unit="Per CBM"
-  Row2: category="LCL (Ocean Freight)", name="BAF", rate=5, unit="Per CBM"
-  Row3: category="LCL (Ocean Freight)", name="B/L Fee", rate=45, unit="Per BL"
-
-Example B: W/M rate quoted
-  Source: "Ocean freight USD 22 W/M"
-  -> rate=22, unit="Per CBM", remarks="W/M basis (1 CBM = 1,000 KG)"
-
-Example C: Per-ton and per-CBM listed separately (W/M)
-  Source: "Freight: $20/cbm or $20/ton (W/M)"
-  -> ONE row: rate=20, unit="Per CBM"
-  remarks="W/M: per CBM or per Ton, whichever greater"
-
-Example D: /CBM does not force destination-side charges into freight
-  Source: "Destination THC USD 12/cbm + Destination CFS USD 18/cbm"
-  Row1: category="Destination Charges", name="THC", rate=12, unit="Per CBM"
-  Row2: category="Destination Charges", name="Destination CFS", rate=18, unit="Per CBM"
-  WRONG: moving these to ocean freight only because the unit is /CBM\
-"""
-
-
-# ===========================================================================
-# Detection prompt
-# ===========================================================================
-_DETECT_PROMPT_TPL = """\
-Classify this freight quote document.
-
-{inquiry_filter}
-
-Output ONLY a JSON object with a single key "quote_type".
-Valid values:
-  "air"   — document contains only air freight quotes
-  "fcl"   — document contains only FCL (Full Container Load) sea freight quotes
-  "lcl"   — document contains only LCL (Less than Container Load / groupage) sea freight quotes
-  "mixed" — document contains BOTH air AND sea freight quotes from the same vendor
-
-DOCUMENT (first 4000 characters):
-{text}
-
-Output:"""

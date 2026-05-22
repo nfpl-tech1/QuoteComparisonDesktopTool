@@ -39,6 +39,16 @@ def rates_cache_file() -> Path:
     return app_data_dir() / "rates_cache.json"
 
 
+def logs_dir() -> Path:
+    path = app_data_dir() / "Logs"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def app_log_file() -> Path:
+    return logs_dir() / "desktop_tool.log"
+
+
 def sessions_dir() -> Path:
     path = app_data_dir() / "Sessions"
     path.mkdir(parents=True, exist_ok=True)

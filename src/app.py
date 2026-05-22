@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
@@ -101,6 +101,25 @@ class _StepButton(QPushButton):
         p.end()
 
 
+class _HealthCheckWorker(QThread):
+    result = Signal(bool)  # True = reachable
+
+    def __init__(self, cloud_url: str, parent=None):
+        super().__init__(parent)
+        self._url = cloud_url.rstrip("/") + "/api/health" if cloud_url else ""
+
+    def run(self):
+        if not self._url:
+            self.result.emit(False)
+            return
+        try:
+            import requests
+            resp = requests.get(self._url, timeout=5)
+            self.result.emit(resp.status_code == 200)
+        except Exception:
+            self.result.emit(False)
+
+
 class App(QMainWindow):
     def __init__(self, currency_service, gemini_service, settings: dict):
         super().__init__()
@@ -111,13 +130,31 @@ class App(QMainWindow):
         self.vendors: dict = {}
         self.chargeable_weight: float = 0.0
         self.selected_quote_mode: str = ""
+        self.selected_lane: str = ""
         self.inquiry_number: str = ""
         self._previous_stack_idx = 0
+
+        self._health_worker: _HealthCheckWorker | None = None
 
         self.setWindowTitle("Vendor Quote Comparison Tool")
         self.setMinimumSize(1100, 680)
         self.resize(1280, 800)
         self._build_ui()
+        self._run_health_check()
+
+    def _run_health_check(self):
+        cloud_url = self.settings.get("cloud_service_url", "").strip()
+        self._health_worker = _HealthCheckWorker(cloud_url, self)
+        self._health_worker.result.connect(self._on_health_result)
+        self._health_worker.start()
+
+    def _on_health_result(self, ok: bool):
+        if ok:
+            self._cloud_lbl.setText("● Cloud OK")
+            self._cloud_lbl.setStyleSheet("color:#27AE60; font-size:10px; padding:4px 8px;")
+        else:
+            self._cloud_lbl.setText("● Cloud offline")
+            self._cloud_lbl.setStyleSheet("color:#E65100; font-size:10px; padding:4px 8px;")
 
     def _build_ui(self):
         central = QWidget()
@@ -157,6 +194,13 @@ class App(QMainWindow):
         self._settings_btn.setFixedHeight(42)
         self._settings_btn.clicked.connect(self.go_to_settings)
         sb_lay.addWidget(self._settings_btn)
+
+        self._cloud_lbl = QLabel("● Cloud checking…")
+        self._cloud_lbl.setAlignment(Qt.AlignCenter)
+        self._cloud_lbl.setStyleSheet(
+            "color:#607080; font-size:10px; padding:4px 8px;"
+        )
+        sb_lay.addWidget(self._cloud_lbl)
 
         footer = QLabel("Made with ❤ at Nagarkot Forwarders Pvt Ltd by Freight Team")
         footer.setAlignment(Qt.AlignCenter)
@@ -269,16 +313,19 @@ class App(QMainWindow):
     def apply_settings(self, new_settings: dict) -> str:
         from src.services.currency_service import CurrencyService
         from src.services.gemini_service import GeminiService
-        from src.services.settings_service import save_settings
+        from src.services.settings_service import DEFAULT_GEMINI_MODEL, save_settings
 
         save_settings(new_settings)
         self.settings = dict(new_settings)
-        self.currency_service = CurrencyService(self.settings.get("free_currency_api_key", ""))
+        self.currency_service = CurrencyService(
+            self.settings.get("cloud_service_url", ""),
+            self.settings.get("cloud_api_key", ""),
+        )
 
         warning = ""
         self.gemini_service = None
         api_key = self.settings.get("gemini_api_key", "").strip()
-        model_name = self.settings.get("gemini_model", "").strip() or "gemini-2.5-flash"
+        model_name = self.settings.get("gemini_model", "").strip() or DEFAULT_GEMINI_MODEL
         if api_key:
             try:
                 self.gemini_service = GeminiService(api_key, model_name=model_name)

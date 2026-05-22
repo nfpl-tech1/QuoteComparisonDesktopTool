@@ -15,14 +15,15 @@ _CACHE_FILE = rates_cache_file()
 
 
 class CurrencyService:
-    def __init__(self, api_key: str = ""):
+    def __init__(self, cloud_url: str = "", cloud_api_key: str = ""):
         self.rates: dict[str, float] = dict(FALLBACK_RATES)
         self.last_updated: datetime | None = None
         self.is_live = False
-        self.api_key = str(api_key or "").strip()
+        self.cloud_url = str(cloud_url or "").rstrip("/")
+        self.cloud_api_key = str(cloud_api_key or "").strip()
 
     def fetch_rates(self) -> bool:
-        """Try today's file cache first, then live API."""
+        """Try today's file cache first, then the cloud service API."""
         return self._load_cache() or self._fetch_live()
 
     def to_usd(self, amount: float, currency: str) -> float:
@@ -72,24 +73,26 @@ class CurrencyService:
         except Exception:
             pass
 
-    # ── Live fetch ────────────────────────────────────────────────────────
+    # ── Live fetch via cloud service ──────────────────────────────────────
     def _fetch_live(self) -> bool:
-        api_key = self.api_key
-        if not api_key:
+        if not self.cloud_url:
             self.is_live = False
             return False
         try:
+            headers = {"x-api-key": self.cloud_api_key} if self.cloud_api_key else {}
             resp = requests.get(
-                "https://api.freecurrencyapi.com/v1/latest",
-                params={"apikey": api_key},
+                f"{self.cloud_url}/api/rates",
+                headers=headers,
                 timeout=10,
             )
             resp.raise_for_status()
-            data = resp.json().get("data", {})
-            if data:
-                self.rates = {**FALLBACK_RATES, **{k: float(v) for k, v in data.items()}}
+            data = resp.json()
+            rates = data.get("rates", {})
+            if rates:
+                self.rates = {**FALLBACK_RATES, **{k: float(v) for k, v in rates.items()}}
                 self.rates["USD"] = 1.0
-                self.last_updated = datetime.now()
+                fetched_at = data.get("fetched_at", "")
+                self.last_updated = datetime.fromisoformat(fetched_at) if fetched_at else datetime.now()
                 self.is_live = True
                 self._save_cache()
                 return True

@@ -5,6 +5,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from src.services.app_paths import app_log_file
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    handlers=[logging.FileHandler(app_log_file(), encoding="utf-8")],
+    force=True,
+)
 logging.getLogger("pdfminer").setLevel(logging.ERROR)
 
 
@@ -13,7 +21,7 @@ def main():
     from PySide6.QtWidgets import QApplication, QMessageBox
 
     from src.services.dialog_theme import APP_DIALOG_STYLE
-    from src.services.settings_service import load_settings
+    from src.services.settings_service import DEFAULT_GEMINI_MODEL, load_settings
 
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
@@ -35,10 +43,13 @@ def main():
 
     from src.services.currency_service import CurrencyService
 
-    currency_service = CurrencyService(settings.get("free_currency_api_key", ""))
+    currency_service = CurrencyService(
+        settings.get("cloud_service_url", ""),
+        settings.get("cloud_api_key", ""),
+    )
 
     api_key = settings.get("gemini_api_key", "").strip()
-    model_name = settings.get("gemini_model", "").strip() or "gemini-2.5-flash"
+    model_name = settings.get("gemini_model", "").strip() or DEFAULT_GEMINI_MODEL
     gemini_service = None
     if api_key:
         try:

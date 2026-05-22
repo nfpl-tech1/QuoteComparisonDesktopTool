@@ -33,25 +33,32 @@ class ExtractionWorker(QThread):
     file_error   = Signal(str, str)   # file_path, error_message
     all_done     = Signal()
 
-    def __init__(self, file_paths: list[str], ai_service, selected_mode: str, parent=None):
+    def __init__(self, file_paths: list[str], ai_service, selected_mode: str, selected_lane: str = "", parent=None):
         super().__init__(parent)
         self.file_paths = file_paths
         self.ai_service = ai_service
         self.selected_mode = selected_mode
+        self.selected_lane = selected_lane
 
     def run(self):
-        from src.services.email_parser import parse_file
-        for path in self.file_paths:
-            self.file_started.emit(path)
-            try:
-                text = parse_file(path)
-                results = self.ai_service.extract_charges(
-                    text,
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = {}
+            for path in self.file_paths:
+                self.file_started.emit(path)
+                fut = executor.submit(
+                    self.ai_service.extract_charges,
+                    path,
                     selected_mode=self.selected_mode,
+                    selected_lane=self.selected_lane,
                 )
-                self.file_done.emit(path, results)
-            except Exception as exc:
-                self.file_error.emit(path, str(exc))
+                futures[fut] = path
+            for fut in as_completed(futures):
+                path = futures[fut]
+                try:
+                    self.file_done.emit(path, fut.result())
+                except Exception as exc:
+                    self.file_error.emit(path, str(exc))
         self.all_done.emit()
 
 
@@ -81,7 +88,7 @@ class ImportPage(QWidget):
         root.addWidget(title)
 
         sub = QLabel(
-            "Upload one PDF or MSG file per vendor. "
+            "Upload one PDF, MSG, Excel, or Word file per vendor. "
             "Charges will be auto-extracted when you proceed."
         )
         sub.setStyleSheet("font-size:13px; color:#607080;")
@@ -155,11 +162,34 @@ class ImportPage(QWidget):
         self._weight_input.valueChanged.connect(self._on_weight_changed)
         form.addWidget(self._weight_input, 1, 1)
 
-        wt_hint = QLabel("(air freight — marks other weight slabs optional)")
+        wt_hint = QLabel("(air only)")
         wt_hint.setStyleSheet("font-size:11px;color:#90A4AE;margin-left:4px;")
         wt_hint.setWordWrap(True)
-        form.addWidget(wt_hint, 1, 2, 1, 4)
+        form.addWidget(wt_hint, 1, 2)
         self._weight_hint = wt_hint
+
+        lane_lbl = QLabel("Lane:")
+        lane_lbl.setStyleSheet("font-size:13px; font-weight:600; color:#1E2A3A;")
+        form.addWidget(lane_lbl, 1, 3)
+
+        self._lane_combo = QComboBox()
+        self._lane_combo.setFixedWidth(150)
+        self._lane_combo.setFixedHeight(34)
+        self._lane_combo.setStyleSheet(
+            "QComboBox{border:1px solid #E53935;border-radius:5px;padding:0 10px;"
+            "font-size:13px;color:#1E2A3A;background:#FFEBEE;}"
+            "QComboBox:focus{border:1px solid #1976D2;}"
+        )
+        self._lane_combo.addItem("Select lane...", "")
+        for _lane in ["Import", "Export", "Cross Trade"]:
+            self._lane_combo.addItem(_lane, _lane.lower())
+        self._lane_combo.currentIndexChanged.connect(self._on_lane_changed)
+        form.addWidget(self._lane_combo, 1, 4)
+
+        self._lane_hint = QLabel("Required")
+        self._lane_hint.setStyleSheet("font-size:11px;color:#E53935;margin-left:6px;")
+        self._lane_hint.setMinimumWidth(85)
+        form.addWidget(self._lane_hint, 1, 5)
 
         form.setColumnStretch(2, 1)
         form.setColumnStretch(5, 1)
@@ -333,6 +363,27 @@ class ImportPage(QWidget):
         self._refresh_buttons()
         self._check_session()
 
+    def _on_lane_changed(self, _index: int):
+        lane = (self._lane_combo.currentData() or "").strip().lower()
+        self.app.selected_lane = lane
+        if lane:
+            self._lane_combo.setStyleSheet(
+                "QComboBox{border:1px solid #43A047;border-radius:5px;padding:0 10px;"
+                "font-size:13px;color:#1E2A3A;background:#F1F8E9;}"
+                "QComboBox:focus{border:1px solid #1976D2;}"
+            )
+            self._lane_hint.setText(lane.title())
+            self._lane_hint.setStyleSheet("font-size:11px;color:#43A047;margin-left:6px;")
+        else:
+            self._lane_combo.setStyleSheet(
+                "QComboBox{border:1px solid #E53935;border-radius:5px;padding:0 10px;"
+                "font-size:13px;color:#1E2A3A;background:#FFEBEE;}"
+                "QComboBox:focus{border:1px solid #1976D2;}"
+            )
+            self._lane_hint.setText("Required")
+            self._lane_hint.setStyleSheet("font-size:11px;color:#E53935;margin-left:6px;")
+        self._refresh_buttons()
+
     def _on_inquiry_changed(self, text: str):
         text = text.strip()
         if not text:
@@ -359,6 +410,9 @@ class ImportPage(QWidget):
     def _get_selected_mode(self) -> str:
         return str(self._mode_combo.currentData() or "").strip().lower()
 
+    def _get_selected_lane(self) -> str:
+        return str(self._lane_combo.currentData() or "").strip().lower()
+
     def _restore_initial_state(self):
         if self.app.selected_quote_mode:
             idx = self._mode_combo.findData(self.app.selected_quote_mode)
@@ -366,6 +420,10 @@ class ImportPage(QWidget):
                 self._mode_combo.setCurrentIndex(idx)
         else:
             self._on_mode_changed(self._mode_combo.currentIndex())
+        if getattr(self.app, "selected_lane", ""):
+            idx = self._lane_combo.findData(self.app.selected_lane)
+            if idx >= 0:
+                self._lane_combo.setCurrentIndex(idx)
         self._weight_input.setValue(getattr(self.app, "chargeable_weight", 0.0))
         self._update_weight_state()
         self.refresh_service_state()
@@ -416,7 +474,11 @@ class ImportPage(QWidget):
     def _browse(self):
         paths, _ = QFileDialog.getOpenFileNames(
             self, "Select Quote Files", "",
-            "Quote Files (*.pdf *.msg);;PDF Files (*.pdf);;MSG Files (*.msg)"
+            "Quote Files (*.pdf *.msg *.xlsx *.xls *.xlsm *.docx *.doc)"
+            ";;PDF Files (*.pdf)"
+            ";;MSG Files (*.msg)"
+            ";;Excel Files (*.xlsx *.xls *.xlsm)"
+            ";;Word Files (*.docx *.doc)"
         )
         if paths:
             self._add_files(paths)
@@ -482,11 +544,13 @@ class ImportPage(QWidget):
         has_files = bool(self._file_rows)
         has_valid_inquiry = bool(self._get_inquiry_number())
         has_mode = bool(self._get_selected_mode())
-        self.proceed_btn.setEnabled(has_files and has_valid_inquiry and has_mode)
+        has_lane = bool(self._get_selected_lane())
+        can_proceed = has_files and has_valid_inquiry and has_mode and has_lane
+        self.proceed_btn.setEnabled(can_proceed)
         if hasattr(self, "clear_btn"):
             self.clear_btn.setEnabled(has_files)
         if hasattr(self, "save_session_btn"):
-            self.save_session_btn.setEnabled(has_files and has_valid_inquiry and has_mode)
+            self.save_session_btn.setEnabled(can_proceed)
 
     def _clear_sub_rows(self, path: str):
         for sub in self._sub_rows.pop(path, []):
@@ -558,6 +622,15 @@ class ImportPage(QWidget):
             )
             self._mode_combo.setFocus()
             return
+        selected_lane = self._get_selected_lane()
+        if not selected_lane:
+            QMessageBox.warning(
+                self,
+                "Lane Required",
+                "Please select whether this shipment is Import, Export, or Cross Trade before proceeding.",
+            )
+            self._lane_combo.setFocus()
+            return
 
         pending = []
         if self.app.gemini_service:
@@ -620,6 +693,7 @@ class ImportPage(QWidget):
         if pending:
             self.proceed_btn.setEnabled(False)
             self._mode_combo.setEnabled(False)
+            self._lane_combo.setEnabled(False)
             self.progress.setMaximum(len(pending))
             self.progress.setValue(0)
             self.progress.setVisible(True)
@@ -631,6 +705,7 @@ class ImportPage(QWidget):
                 pending,
                 self.app.gemini_service,
                 selected_mode,
+                selected_lane,
                 self,
             )
             self._worker.file_started.connect(self._on_started)
@@ -721,12 +796,14 @@ class ImportPage(QWidget):
 
     def _on_all_done(self):
         self._mode_combo.setEnabled(True)
+        self._lane_combo.setEnabled(True)
         self.progress.setVisible(False)
         self.status_label.setVisible(False)
         self._go_to_mapping()
 
     def _go_to_mapping(self):
         self._mode_combo.setEnabled(True)
+        self._lane_combo.setEnabled(True)
         for path in self._file_rows:
             if path not in self._extracted_paths:
                 vd = VendorData(Path(path).stem, path)
@@ -932,6 +1009,16 @@ class ImportPage(QWidget):
         self._weight_input.setValue(cw)
         self._weight_input.blockSignals(False)
         self.app.chargeable_weight = cw
+
+        # Restore lane
+        lane = str(session.get("lane") or "").strip().lower()
+        if lane:
+            idx = self._lane_combo.findData(lane)
+            if idx >= 0:
+                self._lane_combo.blockSignals(True)
+                self._lane_combo.setCurrentIndex(idx)
+                self._lane_combo.blockSignals(False)
+                self.app.selected_lane = lane
 
         # Restore inquiry number on app (already set in _on_inquiry_changed, but ensure consistency)
         self.app.inquiry_number = session.get("inquiry_number", self.app.inquiry_number)

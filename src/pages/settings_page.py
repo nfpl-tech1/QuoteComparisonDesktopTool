@@ -5,13 +5,14 @@ from PySide6.QtWidgets import (
     QSizePolicy,
 )
 
-from src.services.app_paths import app_data_dir, sessions_dir, settings_file
+from src.services.app_paths import app_data_dir, app_log_file, sessions_dir, settings_file
+from src.services.settings_service import DEFAULT_GEMINI_MODEL
 
 
 class SettingsPage(QWidget):
     _MODEL_OPTIONS = [
-        ("gemini-2.5-flash", "Flash 2.5  (faster, lower cost)"),
-        ("gemini-2.5-pro",   "Pro 2.5  (heavier reasoning)"),
+        ("gemini-3.1-flash-lite", "3.1 Flash Lite  (recommended)"),
+        ("gemini-2.5-flash",      "2.5 Flash"),
     ]
 
     def __init__(self, app_window, parent=None):
@@ -82,7 +83,7 @@ class SettingsPage(QWidget):
         body_lay.addWidget(self._status)
 
         body_lay.addWidget(self._build_ai_card())
-        body_lay.addWidget(self._build_currency_card())
+        body_lay.addWidget(self._build_cloud_card())
         body_lay.addWidget(self._build_storage_card())
 
         body_lay.addStretch()
@@ -138,19 +139,34 @@ class SettingsPage(QWidget):
         lay.addLayout(model_wrap)
         return card
 
-    def _build_currency_card(self) -> QFrame:
+    def _build_cloud_card(self) -> QFrame:
         card, lay = self._card("#2E7D32")
         lay.addWidget(self._card_header(
-            "Exchange Rates",
-            "Optional. Add a Free Currency API key to fetch live rates instead of built-in fallbacks.",
+            "Cloud Service",
+            "Exchange rates and inquiry logging go through the Nagarkot cloud service on Vercel.",
         ))
         lay.addWidget(self._hline())
-        self._currency_key = self._secret_field(
-            "Free Currency API Key",
-            "Paste your Free Currency API key here",
-            "Stored only for this Windows user profile.",
+
+        self._user_name = self._text_field(
+            "Your Name",
+            "e.g. Sarthak",
+            "Shown in the dashboard to identify who processed each inquiry.",
         )
-        lay.addWidget(self._currency_key["wrap"])
+        lay.addWidget(self._user_name["wrap"])
+
+        self._cloud_url = self._text_field(
+            "Cloud Service URL",
+            "https://your-app.vercel.app",
+            "The base URL of your Vercel deployment.",
+        )
+        lay.addWidget(self._cloud_url["wrap"])
+
+        self._cloud_key = self._secret_field(
+            "Cloud API Key",
+            "Paste the CLOUD_API_KEY value here",
+            "Must match the CLOUD_API_KEY environment variable set on Vercel.",
+        )
+        lay.addWidget(self._cloud_key["wrap"])
         return card
 
     def _build_storage_card(self) -> QFrame:
@@ -164,6 +180,7 @@ class SettingsPage(QWidget):
         for label, value in (
             ("Settings File",        str(settings_file())),
             ("User Data Folder",     str(app_data_dir())),
+            ("Desktop Log File",     str(app_log_file())),
             ("Saved Sessions",       str(sessions_dir())),
         ):
             lay.addWidget(self._path_row(label, value))
@@ -207,6 +224,32 @@ class SettingsPage(QWidget):
         line.setFrameShape(QFrame.HLine)
         line.setStyleSheet("color:#E6ECF2;border:none;background:#E6ECF2;max-height:1px;")
         return line
+
+    def _text_field(self, label_text: str, placeholder: str, hint: str) -> dict:
+        wrap = QWidget()
+        wrap.setStyleSheet("background:transparent;border:none;")
+        lay = QVBoxLayout(wrap)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(6)
+
+        lbl = QLabel(label_text)
+        lbl.setStyleSheet("font-size:12px;font-weight:600;color:#1E2A3A;border:none;")
+        lay.addWidget(lbl)
+
+        edit = QLineEdit()
+        edit.setPlaceholderText(placeholder)
+        edit.setFixedHeight(40)
+        edit.setStyleSheet(
+            "QLineEdit{border:1px solid #CFD8DC;border-radius:8px;"
+            "padding:0 14px;font-size:13px;color:#1E2A3A;background:#FAFBFC;}"
+            "QLineEdit:focus{border:1px solid #1976D2;background:#FFFFFF;}"
+        )
+        lay.addWidget(edit)
+
+        h = QLabel(hint)
+        h.setStyleSheet("font-size:11px;color:#90A4AE;border:none;")
+        lay.addWidget(h)
+        return {"wrap": wrap, "edit": edit}
 
     def _secret_field(self, label_text: str, placeholder: str, hint: str) -> dict:
         wrap = QWidget()
@@ -277,7 +320,7 @@ class SettingsPage(QWidget):
             combo.addItem(label_text, value)
         lay.addWidget(combo)
 
-        h = QLabel("Flash is faster and cheaper · Pro handles complex quote layouts")
+        h = QLabel("Choose between 3.1 Flash Lite and 2.5 Flash for extraction.")
         h.setStyleSheet("font-size:11px;color:#90A4AE;border:none;")
         lay.addWidget(h)
         return {"wrap": wrap, "combo": combo}
@@ -339,10 +382,12 @@ class SettingsPage(QWidget):
     def load_settings(self):
         settings = self.app.settings
         self._gemini_key["edit"].setText(settings.get("gemini_api_key", ""))
-        model_value = settings.get("gemini_model", "gemini-2.5-flash")
+        model_value = settings.get("gemini_model", DEFAULT_GEMINI_MODEL)
         idx = self._gemini_model["combo"].findData(model_value)
         self._gemini_model["combo"].setCurrentIndex(idx if idx >= 0 else 0)
-        self._currency_key["edit"].setText(settings.get("free_currency_api_key", ""))
+        self._user_name["edit"].setText(settings.get("user_display_name", ""))
+        self._cloud_url["edit"].setText(settings.get("cloud_service_url", ""))
+        self._cloud_key["edit"].setText(settings.get("cloud_api_key", ""))
         self.refresh_runtime_state("")
 
     def refresh_runtime_state(self, warning: str):
@@ -353,19 +398,19 @@ class SettingsPage(QWidget):
             )
             return
 
-        gemini_ready   = self.app.gemini_service is not None
-        currency_ready = bool(self.app.settings.get("free_currency_api_key", "").strip())
+        gemini_ready = self.app.gemini_service is not None
+        cloud_ready  = bool(self.app.settings.get("cloud_service_url", "").strip())
 
         if gemini_ready:
             detail = "Vendor quote extraction is active."
-            if currency_ready:
-                detail += "  Live exchange-rate fetching is also configured."
+            if cloud_ready:
+                detail += "  Cloud service is configured for live exchange rates and inquiry logging."
             self._apply_status("#E8F5E9", "#1B5E20", "#A5D6A7",
                                "OK", "Everything is configured", detail)
         else:
             detail = "AI extraction is not configured yet — manual mapping will still work."
-            if currency_ready:
-                detail += "  Live exchange-rate fetching is configured."
+            if cloud_ready:
+                detail += "  Cloud service is configured."
             self._apply_status("#FFF8E1", "#7B5800", "#FFE082",
                                "!", "AI extraction API key not set", detail)
 
@@ -390,9 +435,11 @@ class SettingsPage(QWidget):
 
     def _save(self):
         settings = {
-            "gemini_api_key":       self._gemini_key["edit"].text().strip(),
-            "gemini_model":         self._gemini_model["combo"].currentData() or "gemini-2.5-flash",
-            "free_currency_api_key": self._currency_key["edit"].text().strip(),
+            "gemini_api_key":    self._gemini_key["edit"].text().strip(),
+            "gemini_model":      self._gemini_model["combo"].currentData() or DEFAULT_GEMINI_MODEL,
+            "user_display_name": self._user_name["edit"].text().strip(),
+            "cloud_service_url": self._cloud_url["edit"].text().strip(),
+            "cloud_api_key":     self._cloud_key["edit"].text().strip(),
         }
         warning = self.app.apply_settings(settings)
         if warning:

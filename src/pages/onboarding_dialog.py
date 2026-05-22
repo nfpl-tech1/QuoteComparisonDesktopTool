@@ -6,8 +6,8 @@ from PySide6.QtWidgets import (
 
 
 _MODEL_OPTIONS = [
-    ("gemini-2.5-flash", "Flash 2.5  (faster, lower cost)"),
-    ("gemini-2.5-pro",   "Pro 2.5  (heavier reasoning)"),
+    ("gemini-3.1-flash-lite", "3.1 Flash Lite  (recommended)"),
+    ("gemini-2.5-flash",      "2.5 Flash"),
 ]
 
 _FIELD_STYLE = (
@@ -70,7 +70,7 @@ class OnboardingDialog(QDialog):
 
         desc = QLabel(
             "One or more API keys are not configured yet.\n"
-            "Set them up below to enable AI-powered charge extraction and live exchange rates."
+            "Set them up below to enable AI-powered charge extraction and cloud-synced exchange rates."
         )
         desc.setStyleSheet("font-size:13px;color:#BBDEFB;border:none;line-height:1.4;")
         desc.setWordWrap(True)
@@ -128,12 +128,12 @@ class OnboardingDialog(QDialog):
         self._model_combo.setMinimumWidth(280)
         for value, label in _MODEL_OPTIONS:
             self._model_combo.addItem(label, value)
-        saved_model = self._settings.get("gemini_model", "gemini-2.5-flash")
+        saved_model = self._settings.get("gemini_model", "gemini-3.1-flash-lite")
         idx = next((i for i, (v, _) in enumerate(_MODEL_OPTIONS) if v == saved_model), 0)
         self._model_combo.setCurrentIndex(idx)
         m_lay.addWidget(self._model_combo)
 
-        m_hint = QLabel("Flash is faster and cheaper · Pro handles complex quote layouts")
+        m_hint = QLabel("Choose between 3.1 Flash Lite and 2.5 Flash for extraction.")
         m_hint.setStyleSheet("font-size:11px;color:#90A4AE;border:none;")
         m_lay.addWidget(m_hint)
         b_lay.addWidget(model_wrap)
@@ -144,31 +144,43 @@ class OnboardingDialog(QDialog):
         div.setStyleSheet("color:#DCE3EA;background:#DCE3EA;max-height:1px;border:none;")
         b_lay.addWidget(div)
 
-        # Currency section
+        # Cloud Service section
         b_lay.addWidget(self._section_header(
-            "Free Currency API Key",
-            "Optional. Enables live exchange-rate fetching instead of built-in fallback rates.",
+            "Cloud Service",
+            "Optional. Enter your name, Vercel URL and API key for live exchange rates and inquiry logging.",
             required=False,
         ))
 
-        cur_row = QHBoxLayout()
-        cur_row.setSpacing(8)
-        self._cur_key_edit = QLineEdit()
-        self._cur_key_edit.setPlaceholderText("Paste your Free Currency API key here  (optional)")
-        self._cur_key_edit.setEchoMode(QLineEdit.Password)
-        self._cur_key_edit.setStyleSheet(_FIELD_STYLE)
-        self._cur_key_edit.setText(self._settings.get("free_currency_api_key", ""))
-        cur_row.addWidget(self._cur_key_edit, 1)
+        self._user_name_edit = QLineEdit()
+        self._user_name_edit.setPlaceholderText("Your name  (e.g. Sarthak)")
+        self._user_name_edit.setStyleSheet(_FIELD_STYLE)
+        self._user_name_edit.setText(self._settings.get("user_display_name", ""))
+        b_lay.addWidget(self._user_name_edit)
 
-        self._cur_toggle = QPushButton("Show")
-        self._cur_toggle.setFixedHeight(40)
-        self._cur_toggle.setFixedWidth(68)
-        self._cur_toggle.setStyleSheet(self._ghost_btn())
-        self._cur_toggle.clicked.connect(
-            lambda: self._toggle(self._cur_key_edit, self._cur_toggle)
+        self._cloud_url_edit = QLineEdit()
+        self._cloud_url_edit.setPlaceholderText("https://your-app.vercel.app  (optional)")
+        self._cloud_url_edit.setStyleSheet(_FIELD_STYLE)
+        self._cloud_url_edit.setText(self._settings.get("cloud_service_url", ""))
+        b_lay.addWidget(self._cloud_url_edit)
+
+        cloud_key_row = QHBoxLayout()
+        cloud_key_row.setSpacing(8)
+        self._cloud_key_edit = QLineEdit()
+        self._cloud_key_edit.setPlaceholderText("Cloud API Key  (optional)")
+        self._cloud_key_edit.setEchoMode(QLineEdit.Password)
+        self._cloud_key_edit.setStyleSheet(_FIELD_STYLE)
+        self._cloud_key_edit.setText(self._settings.get("cloud_api_key", ""))
+        cloud_key_row.addWidget(self._cloud_key_edit, 1)
+
+        self._cloud_key_toggle = QPushButton("Show")
+        self._cloud_key_toggle.setFixedHeight(40)
+        self._cloud_key_toggle.setFixedWidth(68)
+        self._cloud_key_toggle.setStyleSheet(self._ghost_btn())
+        self._cloud_key_toggle.clicked.connect(
+            lambda: self._toggle(self._cloud_key_edit, self._cloud_key_toggle)
         )
-        cur_row.addWidget(self._cur_toggle)
-        b_lay.addLayout(cur_row)
+        cloud_key_row.addWidget(self._cloud_key_toggle)
+        b_lay.addLayout(cloud_key_row)
 
         self._error_lbl = QLabel("")
         self._error_lbl.setStyleSheet(
@@ -271,9 +283,11 @@ class OnboardingDialog(QDialog):
             return
 
         self._result_settings = {
-            "gemini_api_key":        ai_key,
-            "gemini_model":          self._model_combo.currentData() or "gemini-2.5-flash",
-            "free_currency_api_key": self._cur_key_edit.text().strip(),
+            "gemini_api_key":    ai_key,
+            "gemini_model":      self._model_combo.currentData() or "gemini-3.1-flash-lite",
+            "user_display_name": self._user_name_edit.text().strip(),
+            "cloud_service_url": self._cloud_url_edit.text().strip(),
+            "cloud_api_key":     self._cloud_key_edit.text().strip(),
         }
         self.accept()
 

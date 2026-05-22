@@ -11,6 +11,8 @@ for pkg in (
     "pdfminer",
     "bs4",
     "openpyxl",
+    "docx",
+    "lxml",
 ):
     hiddenimports += collect_submodules(pkg)
 
