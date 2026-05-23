@@ -568,7 +568,8 @@ class ImportPage(QWidget):
         sub_list = []
         for vd in vendors:
             if vd.shipping_line:
-                label = f"{vd.vendor_name}  —  {vd.shipping_line}"
+                ct_suffix = f" · {vd.container_type}" if vd.container_type else ""
+                label = f"{vd.vendor_name}  —  {vd.shipping_line}{ct_suffix}"
             elif vd.airline:
                 label = f"{vd.vendor_name}  —  {vd.airline}"
             else:

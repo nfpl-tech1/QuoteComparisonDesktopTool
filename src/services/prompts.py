@@ -1,10 +1,24 @@
 """
-All Gemini prompt string constants — no imports needed.
+Gemini prompt constants — 16-bucket architecture.
+
+Buckets
+-------
+SHARED          : _INQUIRY_FILTER, _VERIFY
+LANE (3)        : _LANE_IMPORT, _LANE_EXPORT, _LANE_CROSSTRADE
+MODE (3)        : _AIR_*, _FCL_*, _LCL_*   (role / notation / buckets / canonical / schema)
+COMBINATION (9) : _AIR_IMPORT_EX, _AIR_EXPORT_EX, _AIR_CROSSTRADE_EX
+                  _FCL_IMPORT_EX, _FCL_EXPORT_EX, _FCL_CROSSTRADE_EX
+                  _LCL_IMPORT_EX, _LCL_EXPORT_EX, _LCL_CROSSTRADE_EX
+
+Assembly (gemini_service.py)
+----------------------------
+  SHARED + LANE[x] + MODE[y] + COMBINATION[y+x] + JSON_SCHEMA[y]
 """
 
-# ---------------------------------------------------------------------------
-# Shared: inquiry filter + document format context (added to every prompt)
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# SHARED
+# ===========================================================================
+
 _INQUIRY_FILTER = """\
 CONTEXT — TWO PARTIES IN THIS DOCUMENT:
   1. Nagarkot Freight Forwarding Private Limited (the BUYER / us)
@@ -23,12 +37,19 @@ The content provided may include any combination of:
     the first object in each array contains the column headers
   - [Excel: filename] blocks — Excel attachments converted to JSON arrays
   - Uploaded PDF pages (rendered before this text block)
-All content is from the same vendor quote set.\
+All content is from the same vendor quote set.
+
+REPLY CHAINS — ALWAYS USE THE NEWEST QUOTE:
+Emails often contain the full reply thread stacked chronologically (newest at top).
+Quoted older emails appear after embedded reply headers such as:
+  "From: … Sent: …", "Van: … Verzonden: …", "De: … Envoyé: …",
+  "-----Original Message-----", "On [date] wrote:", or similar.
+RULE: Extract rates ONLY from the MOST RECENT email (top of thread).
+Completely ignore any quoted/embedded older emails that appear after such headers.
+If the same charge appears at different rates in different parts of the thread,
+always use the rate from the MOST RECENT (topmost) occurrence.\
 """
 
-# ---------------------------------------------------------------------------
-# Shared: pre-return verification checklist
-# ---------------------------------------------------------------------------
 _VERIFY = """\
 BEFORE returning JSON — run this checklist:
   Step 1 — Vendor: confirm vendor_name is the freight forwarder or carrier,
@@ -40,42 +61,55 @@ BEFORE returning JSON — run this checklist:
     ✓ rate is a plain number — minimum / floor belongs in remarks
     ✓ if_applicable=true ONLY when source uses explicit conditional language:
       "optional", "if applicable", "if required", "subject to approval"
+      Standard freight disclaimers do NOT make a rate if_applicable=true:
+      "subject to space/equipment availability", "subject to change",
+      "rates may fluctuate", "subject to confirmation" — these appear on
+      almost every spot rate and the charge is still real and should be false.
     ✓ no row added for a pre-calculated total — only per-unit rates
+    ✓ currency is NEVER converted — always record the vendor's original currency.
+      If the source says USD 175, record rate=175 currency="USD".
+      Never calculate or substitute an equivalent amount in another currency.
   Step 4 — Output: return the JSON object only, no preamble, no explanation.\
 """
 
 
-# ---------------------------------------------------------------------------
-# Shared: lane / shipment direction context (injected after _INQUIRY_FILTER)
-# ---------------------------------------------------------------------------
-_LANE_CONTEXT_TPL = """\
-SHIPMENT DIRECTION: {lane}
-{lane_detail}\
+# ===========================================================================
+# LANE BLOCKS (3)
+# ===========================================================================
+
+_LANE_IMPORT = """\
+SHIPMENT DIRECTION: Import
+Cargo is moving INTO India (import).
+Origin-side charges (pre-carriage from supplier's factory, export clearance,
+origin THC) still appear in import quotes when the vendor covers the full
+EXW-to-door leg — extract them normally as "EXW / Origin Charges".
+Destination-side charges (import customs clearance, destination delivery,
+destination THC/ATC) are the more common focus of import quotes.\
 """
 
-_LANE_DETAILS = {
-    "import": (
-        "Cargo is moving INTO India (import). "
-        "Destination-side charges (import customs clearance, destination delivery, "
-        "destination THC/ATC) are the primary cost focus. "
-        "When a charge references India-side delivery or customs, classify as Destination Charges."
-    ),
-    "export": (
-        "Cargo is moving OUT OF India (export). "
-        "Origin-side charges (pre-carriage, export clearance, origin handling) are the primary cost focus. "
-        "When a charge references pick-up from shipper or export customs, classify as EXW / Origin Charges."
-    ),
-    "cross trade": (
-        "This is a CROSS TRADE shipment — both origin AND destination are outside India. "
-        "Nagarkot acts as an intermediary arranger. "
-        "Classify origin-side charges as EXW / Origin Charges and destination-side charges "
-        "as Destination Charges in the normal way."
-    ),
-}
+_LANE_EXPORT = """\
+SHIPMENT DIRECTION: Export
+Cargo is moving OUT OF India (export).
+Origin-side charges (pre-carriage, export customs clearance, origin THC,
+VGM, screening) are the primary focus.
+Destination-side charges (destination THC, import customs at destination,
+delivery order, last-mile) may still appear if the vendor quotes door-to-door
+— extract them normally as "Destination Charges".\
+"""
+
+_LANE_CROSSTRADE = """\
+SHIPMENT DIRECTION: Cross Trade
+Both origin AND destination are outside India. Nagarkot acts as an
+intermediary arranger.
+Classify origin-side charges as "EXW / Origin Charges" and
+destination-side charges as "Destination Charges" in the normal way.
+Neither origin nor destination is India — do not apply India-specific
+customs or port assumptions.\
+"""
 
 
 # ===========================================================================
-# AIR FREIGHT
+# AIR MODE BLOCKS
 # ===========================================================================
 
 _AIR_ROLE = """\
@@ -187,8 +221,8 @@ CANONICAL CHARGE NAMES — map vendor terms to these exact labels:
   "Import Clearance"         <- import customs, import clearance, customs clearance (dest)\
 """
 
-_AIR_EXAMPLES = """\
-FEW-SHOT EXAMPLES:
+_AIR_COMMON_EXAMPLES = """\
+COMMON EXAMPLES (apply to all lanes):
 
 Example A: "Min $X or $Y/kg" — minimum vs per-unit rate
   Source: "Airport Transfer: Min $85.00 or $0.25 per kg"
@@ -269,6 +303,35 @@ Example H: /KG unit does not determine bucket
   WRONG: category="AF (Air Freight)" — a /KG unit does not make a charge airline freight.\
 """
 
+# ── AIR combination-specific examples (populated per lane as real cases emerge) ──
+
+_AIR_IMPORT_EXAMPLES = """\
+IMPORT-SPECIFIC NOTES (Air):
+  - Chargeable weight (C) is the standard billing basis for import air shipments.
+    Extract gross weight (G) rows only if explicitly quoted and note in remarks.
+  - Destination ATC / THC: always "Destination Charges" regardless of unit.
+  - Galaxy Freight Excel format: when columns include both "DISC RATE" and
+    "FREIGHT RATE", use DISC RATE (the discounted/actual price) and ignore
+    FREIGHT RATE (rack rate).\
+"""
+
+_AIR_EXPORT_EXAMPLES = """\
+EXPORT-SPECIFIC NOTES (Air):
+  - Some vendors quote separate rates for Gross Weight (G) and Chargeable Weight (C)
+    on export shipments. Extract both as separate rows when both appear explicitly.
+  - ENS / PLACI / AES filings are export-origin charges even when listed next to
+    airline surcharges — always "EXW / Origin Charges".
+  - Export screening / x-ray at origin airport: "EXW / Origin Charges".\
+"""
+
+_AIR_CROSSTRADE_EXAMPLES = """\
+CROSS TRADE-SPECIFIC NOTES (Air):
+  - Neither origin nor destination is India. Do not apply Indian port or customs
+    charge names unless the document explicitly uses them.
+  - Origin-side handling, export clearance at the foreign origin: "EXW / Origin Charges".
+  - Destination-side customs, ATC at destination: "Destination Charges".\
+"""
+
 _AIR_JSON_SCHEMA = """\
 Return ONLY valid JSON — no markdown fences, no explanations, no extra text:
 
@@ -303,7 +366,7 @@ OUTPUT RULES:
 
 
 # ===========================================================================
-# FCL (Full Container Load)
+# FCL MODE BLOCKS
 # ===========================================================================
 
 _FCL_ROLE = """\
@@ -311,13 +374,39 @@ You are an expert FCL (Full Container Load) sea freight rate extractor with
 20+ years of experience in international freight forwarding. Your sole output
 is structured JSON.
 
-The two most common errors in FCL extraction — avoid them:
-  1. Placing THC in the "FCL (Ocean Freight)" bucket. THC belongs to whichever
+The three most common errors in FCL extraction — avoid them:
+  1. Placing Ocean Freight in "EXW / Origin Charges" because it appears near
+     origin charges in the email (trucking, THC, customs, etc.).
+     Ocean Freight is ALWAYS "FCL (Ocean Freight)" — no matter where it sits in
+     the email or what label the vendor uses ("Oceanfreight", "sea freight", "freight").
+  2. Placing THC in the "FCL (Ocean Freight)" bucket. THC belongs to whichever
      side of the journey it occurs on: origin THC → EXW, destination THC →
      Destination Charges.
-  2. Using the /Container unit as a cue to assign a charge to the freight bucket.
+  3. Using the /Container unit as a cue to assign a charge to the freight bucket.
      Origin THC and origin handling are charged /container and still belong to
      "EXW / Origin Charges".\
+"""
+
+_FCL_CONTAINER_SELECTION = """\
+CONTAINER TYPE SELECTION:
+  1. Find the INQUIRY section at the bottom of the email chain (written by
+     Nagarkot Freight Forwarding Private Limited). Look for "No. & Type of Containers".
+  2. Map container size strings to container_type and unit:
+       "1x20ft" / "1*20ft" / "20' GP" / "20GP" -> container_type="20ft GP",  unit="Per Container (20ft)"
+       "1x40ft" / "1*40ft" / "40' GP" / "40GP" -> container_type="40ft GP",  unit="Per Container (40ft)"
+       "1x40HC" / "1*40HC" / "40' HC" / "40HQ" / "40HC" -> container_type="40ft HC", unit="Per Container (40ft HC)"
+  3. When the vendor quotes rates for multiple container sizes (20GP | 40GP | 40HC columns
+     or separate blocks per size), create one shipping_lines entry per
+     shipping_line + container_type combination — do NOT collapse them into one entry.
+  4. Charges that are stated once without a size breakdown (BAF, BL fee, THC, etc.) apply
+     to all sizes — copy them into every container-type entry at the same rate.
+     Only the ocean freight (and any charge that the vendor explicitly breaks down by size)
+     gets a size-specific rate.
+  5. TEU CONVERSION — some vendors quote rates per TEU (Twenty-foot Equivalent Unit):
+       1 TEU = 1 × 20ft container  →  rate for 20ft = quoted_rate × 1
+       1 TEU = ½ × 40ft container  →  rate for 40ft GP or 40ft HC = quoted_rate × 2
+     Apply this conversion to EVERY per-TEU charge (ocean freight, BAF, THC, etc.).
+     Record the converted rate in the JSON; note "converted from X/TEU" in remarks.\
 """
 
 _FCL_BUCKETS = """\
@@ -356,7 +445,8 @@ CANONICAL CHARGE NAMES — map vendor terms to these exact labels:
   "Origin CFS"           <- CFS (origin), container freight station, stuffing fee
   "Insurance"            <- cargo insurance, marine insurance
   "Port Security"        <- port security, port safety fee, export security fee
-  "Ocean Freight"        <- ocean freight, sea freight, base freight, FAK rate
+  "Ocean Freight"        <- ocean freight, oceanfreight, sea freight, seafreight,
+                            base freight, FAK rate, freight (standalone FCL line)
   "BAF"                  <- BAF, bunker adjustment, fuel surcharge, IFO, LSS, EBS, EFF
   "PSS"                  <- PSS, peak season surcharge, high season surcharge
   "GRI"                  <- GRI, general rate increase
@@ -374,21 +464,8 @@ CANONICAL CHARGE NAMES — map vendor terms to these exact labels:
   "Destination Trucking" <- destination trucking, inland delivery, last mile\
 """
 
-_FCL_CONTAINER_SELECTION = """\
-CONTAINER TYPE SELECTION — CRITICAL:
-  1. Find the INQUIRY section at the bottom of the email chain (written by
-     Nagarkot Freight Forwarding Private Limited). Look for "No. & Type of Containers".
-  2. Map inquiry language to container_type and unit:
-       "1x20ft" / "1*20ft" / "20' GP"           -> container_type="20ft GP",  unit="Per Container (20ft)"
-       "1x40ft" / "1*40ft" / "40' GP"           -> container_type="40ft GP",  unit="Per Container (40ft)"
-       "1x40HC" / "1*40HC" / "40' HC" / "40HQ" -> container_type="40ft HC", unit="Per Container (40ft HC)"
-  3. When the vendor shows a TABLE with columns for multiple sizes (20GP | 40GP | 40HQ),
-     read ONLY the column that matches the requested type. Ignore all other columns.
-  4. Set container_type to the REQUESTED size — not the vendor's full list.\
-"""
-
-_FCL_EXAMPLES = """\
-FEW-SHOT EXAMPLES:
+_FCL_COMMON_EXAMPLES = """\
+COMMON EXAMPLES (apply to all lanes):
 
 Example A: Basic FCL quote — THC is destination, not freight
   Source: "Maersk 40ft GP: Ocean Freight $850 + BAF $120 + Dest THC $165"
@@ -422,7 +499,6 @@ Example D: /Container unit does not determine bucket
   Source: "EIS USD 85/container + BAF USD 120/container + Origin THC USD 35/container"
   Reasoning: EIS and BAF are carrier line-haul surcharges -> "FCL (Ocean Freight)". Origin
     THC is origin terminal handling — the /container unit does not move it into freight.
-    The charge's nature and side determine the bucket, not the unit.
   Row1: category="FCL (Ocean Freight)",  name="Emergency Surcharge", rate=85,  unit="Per Container (40ft)"
   Row2: category="FCL (Ocean Freight)",  name="BAF",                 rate=120, unit="Per Container (40ft)"
   Row3: category="EXW / Origin Charges", name="THC",                 rate=35,  unit="Per Container (40ft)"
@@ -452,17 +528,197 @@ Example G: Unit selection reference
   40ft HC / HQ    -> unit="Per Container (40ft HC)"
   Per B/L charge  -> unit="Per BL"
 
-Example H: Multi-column rate table — read only the requested column
-  Inquiry: "No. & Type of Containers: 1*20ft"
+Example H: Multi-column rate table — one entry per container size
   Vendor table:
     Carrier  ETD         20GP  40GP  40HQ  Free days
     KMTC     2026-03-24  1420  1290  1290  14
-  Reasoning: The inquiry requests 20ft GP. When the vendor shows multiple container
-    columns, extract ONLY the column matching the requested size. The 40GP / 40HQ
-    columns are irrelevant to this comparison.
-  shipping_line="KMTC", container_type="20ft GP", etd="2026-03-24", free_days_destination=14
-  Ocean Freight rate=1420  (the 20GP column)
-  WRONG: rate=1290 — that is the 40GP/40HQ price, not the requested 20ft rate.\
+  Reasoning: The vendor quotes three container sizes. Create one entry per size.
+    Free days (14) are stated once and apply to all — copy into every entry.
+    40GP and 40HQ have the same rate (1290) but are different container types — still
+    create separate entries. Any other shared charges (BAF, THC, etc.) are also
+    copied into every entry at the same rate.
+  Entry 1: shipping_line="KMTC", container_type="20ft GP", etd="2026-03-24",
+    free_days_destination=14, Ocean Freight rate=1420, unit="Per Container (20ft)"
+  Entry 2: shipping_line="KMTC", container_type="40ft GP", etd="2026-03-24",
+    free_days_destination=14, Ocean Freight rate=1290, unit="Per Container (40ft)"
+  Entry 3: shipping_line="KMTC", container_type="40ft HC", etd="2026-03-24",
+    free_days_destination=14, Ocean Freight rate=1290, unit="Per Container (40ft HC)"
+
+Example I: Multiple carriers × multiple sizes
+  Source: "MSC 20GP $1550 / 40HC $1600 | HMM 20GP $1785 / 40HC $1865 — BAF included,
+           Telex $110/BL, Origin Port Charges 20GP $545 / 40HC $665"
+  Reasoning: 2 carriers × 2 sizes = 4 entries. BAF is included in ocean freight.
+    Telex $110/BL is the same for all sizes — copy it. Origin port charges differ by size —
+    use the size-specific rate for each entry.
+  Entry 1: MSC, 20ft GP, Ocean Freight=1550, Telex Release Fee=110, Origin Port=545
+  Entry 2: MSC, 40ft HC, Ocean Freight=1600, Telex Release Fee=110, Origin Port=665
+  Entry 3: HMM, 20ft GP, Ocean Freight=1785, Telex Release Fee=110, Origin Port=545
+  Entry 4: HMM, 40ft HC, Ocean Freight=1865, Telex Release Fee=110, Origin Port=665
+
+Example J: TEU-based rates — convert before recording
+  Source: "COSCO: Ocean Freight $900/TEU, BAF $150/TEU, Destination THC $120/TEU"
+  Reasoning: 1 TEU = 20ft; a 40ft container = 2 TEU. Multiply every per-TEU charge
+    by 1 for 20ft entries and by 2 for 40ft entries. Note the conversion in remarks.
+  20ft GP entry:
+    Ocean Freight rate=900,  remarks="converted from 900/TEU"
+    BAF           rate=150,  remarks="converted from 150/TEU"
+    THC           rate=120,  remarks="converted from 120/TEU"
+  40ft GP entry:
+    Ocean Freight rate=1800, remarks="converted from 900/TEU"
+    BAF           rate=300,  remarks="converted from 150/TEU"
+    THC           rate=240,  remarks="converted from 120/TEU"
+  WRONG: recording rate=900 for the 40ft entry — that is the 20ft (1 TEU) price.
+
+Example K: All-in / lump-sum rates — "Carrier:" label appears at END of its block
+  Source (LIT email format — carrier label closes each block, not opens the next):
+    "20ft all in = USD 1355  /  40ft all in = USD 1465  (EXW to Nhava Sheva)
+     validity: 2026-03-28
+     Carrier: Maersk
+
+     20ft all in = USD 1435  /  40ft all in = USD 1310
+     validity: 2026-03-28
+     Carrier: CMA
+
+     20ft all in = USD 1420  /  40ft all in = USD 1590
+     validity: 2026-03-28
+     Carrier: Hapag-Lloyd"
+  Reasoning: "Carrier: X" labels the block ABOVE it — the rates before that line belong
+    to that carrier. Do NOT shift block 1's rates (1355/1465) to the carrier named in
+    block 2. Each block (rates + the "Carrier:" line at its end) is a self-contained unit.
+    Pair them: 1355/1465 → Maersk, 1435/1310 → CMA, 1420/1590 → Hapag-Lloyd.
+    The vendor provides a single all-in rate with no itemised breakdown; record it as
+    name_of_charge="Ocean Freight" (category="FCL (Ocean Freight)") with remarks="all-in rate".
+  Entry 1: Maersk,      20ft GP, Ocean Freight rate=1355, remarks="all-in rate"
+  Entry 2: Maersk,      40ft GP, Ocean Freight rate=1465, remarks="all-in rate"
+  Entry 3: CMA,         20ft GP, Ocean Freight rate=1435, remarks="all-in rate"
+  Entry 4: CMA,         40ft GP, Ocean Freight rate=1310, remarks="all-in rate"
+  Entry 5: Hapag-Lloyd, 20ft GP, Ocean Freight rate=1420, remarks="all-in rate"
+  Entry 6: Hapag-Lloyd, 40ft GP, Ocean Freight rate=1590, remarks="all-in rate"
+  WRONG: returning an empty shipping_lines array because individual charges are absent.
+  WRONG: assigning 1355/1465 to CMA because "Carrier: Maersk" sits between the blocks —
+    that line closes block 1, it does NOT introduce block 2.
+
+Example L: Rate encoded as a [TABLE] column header
+  Sometimes a vendor's HTML table encodes a charge as the column header itself, not
+  as a data row. In the JSON representation this appears as one key being a charge
+  name and another key being an amount string:
+    [{"Pickup": "Export Customs...", "EUR 558 per container": "EUR 68.50"}, ...]
+  Here "Pickup" is the charge name and "EUR 558 per container" is the pickup rate.
+  The remaining rows list OTHER charges (Export Customs, B/L, etc.) in the first
+  column with their rates in the second column.
+  RULE: When you see a column header key that contains a currency amount (e.g.,
+    "EUR 558 per container", "USD 730 per 20ft"), treat it as a charge row:
+    — charge name  = the OTHER column header (e.g., "Pickup")
+    — rate/currency = parse from the amount-containing header (e.g., EUR 558)
+  Extract this in addition to all the normal data rows.
+  Result for the example above:
+    Row0 (from header): category="EXW / Origin Charges", name="Pre-carriage", rate=558, currency="EUR"
+    Row1 (data row):    category="EXW / Origin Charges", name="Export Clearance", rate=68.50, currency="EUR"
+    Row2 (data row):    category="EXW / Origin Charges", name="B/L Fee", rate=68.00, currency="EUR"
+    ... (remaining rows extracted normally)
+
+Example M: Charge name used as section label in narrative email
+  Some vendors write emails where a charge name ("Oceanfreight", "Trucking") acts
+  as a SECTION HEADER, and the actual rates for each carrier follow underneath.
+  This is NOT a single charge row — each carrier block under that header is a
+  separate shipping_lines entry, and the section label tells you the charge type.
+
+  Source (verbatim free-text email):
+    "trucking Beusichem – Rotterdam (POL)
+     20DC  495,00 EUR  40HC  535,00 EUR
+
+     Oceanfreight, both the same for Mundra / Nhava Sheva:
+     MAERSK  20DC  585,00 EUR  40HC  825,00 EUR  14 days freetime at POD
+     CMA CGM 20DC  715,00 EUR  40HC  595,00 EUR  14 days freetime at POD
+     ONE     20DC  895,00 EUR  40HC  1185,00 EUR 14 days freetime at POD
+     THC at Origin is included in all options"
+
+  Reasoning:
+    "trucking ... 495/535 EUR" → Pre-carriage, EXW / Origin Charges (origin trucking).
+    "Oceanfreight ... MAERSK 585/825 EUR" — "Oceanfreight" is the section label.
+      The rates 585 (20DC) and 825 (40HC) are the Ocean Freight charge for MAERSK.
+      They are NEVER "EXW / Origin Charges" just because they appear after trucking.
+    Three carriers × two container sizes = 6 shipping_lines entries.
+    "THC at Origin is included" → THC is bundled into one of the other charges;
+      do NOT add a separate THC row since no rate is given.
+
+  WRONG: putting 585/825/715/595/895/1185 in "EXW / Origin Charges" because they
+    appear in the same paragraph as the trucking charge.
+  WRONG: treating "Oceanfreight" as a single charge row with rate=0.
+
+  Result (6 entries, showing charges for MAERSK 20DC only as example):
+    Entry 1: shipping_line="Maersk", container_type="20ft GP",
+      free_days_destination=14
+      charges:
+        category="EXW / Origin Charges",    name="Pre-carriage",    rate=495, currency="EUR"
+        category="FCL (Ocean Freight)",      name="Ocean Freight",   rate=585, currency="EUR"
+    Entry 2: shipping_line="Maersk", container_type="40ft HC",
+      free_days_destination=14
+      charges:
+        category="EXW / Origin Charges",    name="Pre-carriage",    rate=535, currency="EUR"
+        category="FCL (Ocean Freight)",      name="Ocean Freight",   rate=825, currency="EUR"
+    (CMA CGM and ONE entries follow the same pattern)\
+"""
+
+# ── FCL combination-specific examples ────────────────────────────────────────
+
+_FCL_IMPORT_EXAMPLES = """\
+IMPORT-SPECIFIC NOTES (FCL):
+
+SCOPE RULE — European vendors quoting import to India typically cover EXW→POD only:
+  Origin side  (vendor's scope) : pre-carriage, export clearance, VGM, origin THC,
+                                   B/L fee, ocean freight and carrier surcharges.
+  Destination side (out of scope): Indian port THC, DO/delivery-order fee,
+                                   import customs clearance, inland delivery in India.
+  Nagarkot handles all India-side charges separately — do NOT extract them from
+  the vendor's quote unless the vendor EXPLICITLY quotes them.
+
+BEFORE placing any charge in "Destination Charges", verify ALL of:
+  ✓ The charge is explicitly labelled for the destination / arrival port (e.g.,
+    "Destination THC at Nhava Sheva", "DO fee payable at JNPT")
+  ✓ The vendor's quote scope is door-to-door, DDP, or DDU (not EXW / CFR / CIF)
+  ✓ It is NOT an origin-side charge (origin THC, origin port security) that was
+    mislabelled or mentioned without a side qualifier
+  If any criterion fails → do NOT add the charge to "Destination Charges".
+
+WRONG (common model mistake):
+  Source: "THC EUR 180 per container" in a European vendor's EXW import quote
+  WRONG action: placing it in "Destination Charges"
+  CORRECT action: origin THC at the load port (Rotterdam) → "EXW / Origin Charges"
+
+CORRECT (explicit destination quote):
+  Source: "Destination THC at Nhava Sheva: USD 165 per container"
+  CORRECT action: vendor explicitly names the Indian port → "Destination Charges"
+
+  - Detention / demurrage at destination: note in remarks on the relevant charge row,
+    but do NOT create a separate Destination Charges row unless explicitly priced.
+
+ADDITIONAL FREE DAYS AT DESTINATION — extract as a charge row, not just a remark:
+  Source: "14 days free time at POD. Additional days: USD 50 per day per container"
+  Reasoning: The 14 included free days → free_days_destination=14. The additional-day
+    rate is a real carrier-controlled cost the importer pays beyond the free period.
+    Extract it as its own row under "FCL (Ocean Freight)".
+  free_days_destination=14
+  Additional row:
+    category="FCL (Ocean Freight)", name="Additional Free Days",
+    rate=50, unit="Per Container (40ft)", currency="USD",
+    remarks="beyond 14 free days at POD"
+  WRONG: putting "additional USD 50/day" only in remarks without adding a charge row.\
+"""
+
+_FCL_EXPORT_EXAMPLES = """\
+EXPORT-SPECIFIC NOTES (FCL):
+  - VGM fee is an export-origin charge (SOLAS requirement) — always "EXW / Origin Charges".
+  - Export customs / EEI filing: "EXW / Origin Charges".
+  - Origin THC is the terminal handling fee at the load port — "EXW / Origin Charges".\
+"""
+
+_FCL_CROSSTRADE_EXAMPLES = """\
+CROSS TRADE-SPECIFIC NOTES (FCL):
+  - Neither port is Indian. Do not assume Indian port surcharge names.
+  - Origin THC (at the foreign load port): "EXW / Origin Charges".
+  - Destination THC (at the foreign discharge port): "Destination Charges".
+  - Nagarkot is the arranger — the vendor quotes the full carrier stack.\
 """
 
 _FCL_JSON_SCHEMA = """\
@@ -473,7 +729,7 @@ Return ONLY valid JSON — no markdown fences, no explanations, no extra text:
   "shipping_lines": [
     {
       "shipping_line": "<carrier name e.g. Maersk, KMTC — empty string if not specified>",
-      "container_type": "<REQUESTED container type from inquiry e.g. 20ft GP, 40ft GP, 40ft HC>",
+      "container_type": "<container type for this entry e.g. 20ft GP, 40ft GP, 40ft HC>",
       "etd": "<Estimated Time of Departure as a date string e.g. 2026-03-24, or empty string>",
       "transit_days": "<transit time e.g. '21 days', 'direct / 21 days', or empty string>",
       "free_days_origin": <integer free days at origin port, 0 if not mentioned>,
@@ -484,7 +740,7 @@ Return ONLY valid JSON — no markdown fences, no explanations, no extra text:
           "name_of_charge": "<canonical label or short description, 2-5 words>",
           "currency": "<3-letter ISO code>",
           "unit_of_measurement": "<Per Container (20ft) / Per Container (40ft) / Per Container (40ft HC) / Per BL / Per Shipment / Lumpsum>",
-          "rate": <numeric rate for the REQUESTED container type — plain number, no symbols>,
+          "rate": <numeric rate for this container type — plain number, no symbols>,
           "remarks": "<minimums, conditions — empty string if none>",
           "if_applicable": <true if explicitly conditional/optional, otherwise false>
         }
@@ -494,16 +750,17 @@ Return ONLY valid JSON — no markdown fences, no explanations, no extra text:
 }
 
 OUTPUT RULES:
-  • One entry per distinct carrier / rate option
-  • container_type = the REQUESTED size from the inquiry
-  • When vendor shows a multi-column table, extract ONLY the requested column
+  • One entry per distinct carrier + container type combination
+  • When vendor quotes multiple container sizes, create one entry per size per carrier
+  • Charges stated once (BAF, THC, BL fee, etc.) are copied into every size entry unchanged;
+    charges that differ by size (ocean freight, size-specific port fees) use the size-specific rate
   • Omit rows where rate=0 AND remarks="" AND if_applicable=false
   • Default currency to USD when ambiguous\
 """
 
 
 # ===========================================================================
-# LCL (Less than Container Load)
+# LCL MODE BLOCKS
 # ===========================================================================
 
 _LCL_ROLE = """\
@@ -524,12 +781,14 @@ Copy the quoted string exactly into the "category" field.
 
   "EXW / Origin Charges"
       Origin trucking, export customs clearance, origin CFS / receiving charge,
-      cargo insurance, origin documentation, origin-side terminal handling.
+      cargo insurance, origin documentation, origin-side terminal handling (OTHC),
+      VGM fee (SOLAS), infrastructure surcharge / infrastructure levy.
 
   "LCL (Ocean Freight)"
-      LCL ocean freight rate per CBM or W/M, BAF per CBM, carrier documentation
-      tied to the line-haul, and freight-like carrier surcharges that function
-      as part of the freight stack.
+      LCL ocean freight rate per CBM or W/M, BAF per CBM, emergency fuel surcharge
+      (EFS), emergency bunker surcharge (EBS), carrier documentation tied to the
+      line-haul, and freight-like carrier surcharges that function as part of the
+      freight stack.
       IMPORTANT: /CBM or /Ton unit does NOT move THC or destination CFS here —
       the charge's side determines the bucket, not the unit.
 
@@ -541,23 +800,31 @@ Copy the quoted string exactly into the "category" field.
 _LCL_CANONICAL = """\
 CANONICAL CHARGE NAMES — map vendor terms to these exact labels:
 
-  "Pre-carriage"        <- origin trucking, collection, pre-carriage
-  "Export Clearance"    <- export customs, export clearance
-  "Origin CFS"          <- origin CFS, receiving charge, stuffing, CFS handling
-  "Insurance"           <- cargo insurance, marine insurance
-  "Ocean Freight"       <- ocean freight, LCL freight, groupage freight, sea freight
-  "BAF"                 <- BAF, bunker adjustment, fuel surcharge (sea)
-  "B/L Fee"             <- B/L fee, HAWB fee, bill of lading, doc release fee
-  "Emergency Surcharge" <- EES, EIS, congestion surcharge, emergency levy
-  "Documentation Fee"   <- doc fee, documentation
-  "Destination CFS"     <- destination CFS, CFS delivery, unstuffing, deconsolidation
-  "THC"                 <- THC, terminal handling, terminal handling charge
-  "Import Clearance"    <- import customs, customs clearance
-  "Delivery Order"      <- delivery order, DO fee\
+  "Pre-carriage"             <- origin trucking, collection, pre-carriage
+  "Export Clearance"         <- export customs, export clearance, export automation fee,
+                                export EDI, AES filing
+  "Origin CFS"               <- origin CFS, receiving charge, stuffing, CFS handling,
+                                CFS slot fee, CFS booking fee
+  "Origin THC"               <- OTHC, origin THC, origin terminal handling charge
+  "VGM Fee"                  <- VGM, VGM fee, SOLAS fee, SOLAS, verified gross mass
+  "Infrastructure Surcharge" <- infrastructure surcharge, infrastructure levy,
+                                port infrastructure fee
+  "Insurance"                <- cargo insurance, marine insurance
+  "Ocean Freight"            <- ocean freight, LCL freight, groupage freight, sea freight
+  "BAF"                      <- BAF, bunker adjustment, fuel surcharge (sea)
+  "Emergency Surcharge"      <- EES, EIS, EFS, EBS, emergency surcharge, emergency levy,
+                                emergency fuel surcharge, emergency bunker surcharge,
+                                congestion surcharge
+  "B/L Fee"                  <- B/L fee, HAWB fee, bill of lading, doc release fee
+  "Documentation Fee"        <- doc fee, documentation, EDI/admin, admin fee
+  "Destination CFS"          <- destination CFS, CFS delivery, unstuffing, deconsolidation
+  "THC"                      <- THC, terminal handling, terminal handling charge
+  "Import Clearance"         <- import customs, customs clearance
+  "Delivery Order"           <- delivery order, DO fee\
 """
 
-_LCL_EXAMPLES = """\
-FEW-SHOT EXAMPLES:
+_LCL_COMMON_EXAMPLES = """\
+COMMON EXAMPLES (apply to all lanes):
 
 Example A: Standard LCL quote
   Source: "LCL freight: USD 18/CBM, BAF USD 5/CBM, B/L USD 45"
@@ -585,11 +852,35 @@ Example C: Per-ton and per-CBM quoted separately for same W/M rate
 Example D: /CBM unit does not determine bucket
   Source: "Destination THC USD 12/cbm + Destination CFS USD 18/cbm"
   Reasoning: Both charges are destination-side. The /CBM unit is merely the billing
-    basis — it does not pull these charges into the LCL freight bucket. The charge's
-    side of the journey determines the bucket.
+    basis — it does not pull these charges into the LCL freight bucket.
   Row1: category="Destination Charges", name="THC",             rate=12, unit="Per CBM"
   Row2: category="Destination Charges", name="Destination CFS", rate=18, unit="Per CBM"
   WRONG: category="LCL (Ocean Freight)" because the unit is /CBM.\
+"""
+
+# ── LCL combination-specific examples ────────────────────────────────────────
+
+_LCL_IMPORT_EXAMPLES = """\
+IMPORT-SPECIFIC NOTES (LCL):
+  - Destination CFS / deconsolidation and import customs clearance are common
+    and expected — extract both as "Destination Charges".
+  - Delivery Order fee is paid at destination to release the cargo — "Destination Charges".
+  - W/M basis is standard for import LCL; note it in remarks.\
+"""
+
+_LCL_EXPORT_EXAMPLES = """\
+EXPORT-SPECIFIC NOTES (LCL):
+  - Origin CFS / receiving / stuffing charge is common — "EXW / Origin Charges".
+  - Export customs clearance: "EXW / Origin Charges".
+  - Some vendors quote a "consolidation fee" or "groupage surcharge" at origin —
+    treat as "Origin CFS" under "EXW / Origin Charges".\
+"""
+
+_LCL_CROSSTRADE_EXAMPLES = """\
+CROSS TRADE-SPECIFIC NOTES (LCL):
+  - Neither port is Indian. Do not apply Indian CFS or customs charge assumptions.
+  - Origin CFS at the foreign consolidation point: "EXW / Origin Charges".
+  - Destination CFS / deconsolidation at the foreign destination: "Destination Charges".\
 """
 
 _LCL_JSON_SCHEMA = """\
@@ -619,3 +910,15 @@ OUTPUT RULES:
   • Default currency to USD when ambiguous
   • W/M rates: use unit="Per CBM" and put W/M rule in remarks\
 """
+
+
+# ===========================================================================
+# Legacy aliases — kept so existing code that imports _LANE_CONTEXT_TPL /
+# _LANE_DETAILS doesn't break during the transition period.
+# ===========================================================================
+_LANE_CONTEXT_TPL = "SHIPMENT DIRECTION: {lane}\n{lane_detail}"
+_LANE_DETAILS = {
+    "import":      _LANE_IMPORT,
+    "export":      _LANE_EXPORT,
+    "cross trade": _LANE_CROSSTRADE,
+}

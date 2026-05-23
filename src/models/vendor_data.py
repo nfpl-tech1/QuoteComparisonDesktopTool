@@ -58,9 +58,10 @@ class VendorData:
 
     @property
     def uid(self) -> str:
-        """Unique key for app.vendors dict — one entry per mode/shipping-line/airline."""
+        """Unique key for app.vendors dict — one entry per mode/shipping-line/container-type/airline."""
         if self.shipping_line:
-            return f"{self.source_file}|{self.quote_type}|{self.shipping_line}"
+            ct = f"|{self.container_type}" if self.container_type else ""
+            return f"{self.source_file}|{self.quote_type}|{self.shipping_line}{ct}"
         if self.airline:
             return f"{self.source_file}|{self.quote_type}|{self.airline}"
         return f"{self.source_file}|{self.quote_type}"

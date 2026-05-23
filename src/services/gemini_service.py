@@ -8,11 +8,17 @@ from google import genai
 from google.genai import types
 
 from src.services.prompts import (
-    _INQUIRY_FILTER, _VERIFY, _LANE_CONTEXT_TPL, _LANE_DETAILS,
-    _AIR_ROLE, _AIR_BUCKETS, _AIR_CANONICAL, _AIR_RATE_NOTATION, _AIR_EXAMPLES, _AIR_JSON_SCHEMA,
-    _FCL_ROLE, _FCL_BUCKETS, _FCL_CANONICAL, _FCL_CONTAINER_SELECTION,
-    _FCL_EXAMPLES, _FCL_JSON_SCHEMA,
-    _LCL_ROLE, _LCL_BUCKETS, _LCL_CANONICAL, _LCL_EXAMPLES, _LCL_JSON_SCHEMA,
+    _INQUIRY_FILTER, _VERIFY,
+    _LANE_IMPORT, _LANE_EXPORT, _LANE_CROSSTRADE,
+    _AIR_ROLE, _AIR_RATE_NOTATION, _AIR_BUCKETS, _AIR_CANONICAL,
+    _AIR_COMMON_EXAMPLES, _AIR_IMPORT_EXAMPLES, _AIR_EXPORT_EXAMPLES, _AIR_CROSSTRADE_EXAMPLES,
+    _AIR_JSON_SCHEMA,
+    _FCL_ROLE, _FCL_CONTAINER_SELECTION, _FCL_BUCKETS, _FCL_CANONICAL,
+    _FCL_COMMON_EXAMPLES, _FCL_IMPORT_EXAMPLES, _FCL_EXPORT_EXAMPLES, _FCL_CROSSTRADE_EXAMPLES,
+    _FCL_JSON_SCHEMA,
+    _LCL_ROLE, _LCL_BUCKETS, _LCL_CANONICAL,
+    _LCL_COMMON_EXAMPLES, _LCL_IMPORT_EXAMPLES, _LCL_EXPORT_EXAMPLES, _LCL_CROSSTRADE_EXAMPLES,
+    _LCL_JSON_SCHEMA,
 )
 from src.services.email_parser import DocumentParts, decompose_file
 
@@ -33,7 +39,7 @@ class GeminiService:
         doc = decompose_file(file_path)
         qt = str(selected_mode).lower().strip()
         lane = str(selected_lane).lower().strip()
-        uploaded = self._upload_pdfs(doc.pdf_bytes)
+        uploaded = self._upload_pdfs(doc.pdf_bytes) + self._upload_images(doc.image_bytes)
         try:
             if qt == "fcl":
                 return self._extract_fcl(doc, uploaded, lane)
@@ -58,8 +64,16 @@ class GeminiService:
                 uploaded.append(ref)
         return uploaded
 
-    def _upload_single_pdf(self, label: str, data: bytes):
-        suffix = ".pdf"
+    def _upload_single_file(self, label: str, data: bytes, mime_type: str = "application/pdf"):
+        _MIME_SUFFIX = {
+            "application/pdf": ".pdf",
+            "image/png":  ".png",
+            "image/jpeg": ".jpg",
+            "image/gif":  ".gif",
+            "image/webp": ".webp",
+            "image/bmp":  ".bmp",
+        }
+        suffix = _MIME_SUFFIX.get(mime_type, ".bin")
         with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
             tmp.write(data)
             tmp_path = tmp.name
@@ -67,7 +81,7 @@ class GeminiService:
             ref = self._client.files.upload(
                 file=tmp_path,
                 config=types.UploadFileConfig(
-                    mime_type="application/pdf",
+                    mime_type=mime_type,
                     display_name=label[:40],
                 ),
             )
@@ -82,13 +96,25 @@ class GeminiService:
             return ref
         except Exception as exc:
             import logging
-            logging.getLogger(__name__).debug("PDF upload failed (%s): %s", label, exc)
+            logging.getLogger(__name__).debug("File upload failed (%s): %s", label, exc)
             return None
         finally:
             try:
                 os.unlink(tmp_path)
             except OSError:
                 pass
+
+    def _upload_single_pdf(self, label: str, data: bytes):
+        return self._upload_single_file(label, data, "application/pdf")
+
+    def _upload_images(self, image_bytes: list) -> list:
+        """Upload inline body images (non-signature) to the File API."""
+        uploaded = []
+        for label, mime_type, data in image_bytes:
+            ref = self._upload_single_file(label, data, mime_type)
+            if ref:
+                uploaded.append(ref)
+        return uploaded
 
     def _delete_uploaded(self, uploaded: list) -> None:
         for ref in uploaded:
@@ -211,73 +237,81 @@ class GeminiService:
     # ------------------------------------------------------------------
     # Prompt instructions (no document text embedded — that comes via _build_contents)
     # ------------------------------------------------------------------
-    def _build_lane_context(self, lane: str) -> str:
-        lane = lane.lower().strip()
-        detail = _LANE_DETAILS.get(lane, "")
-        if not lane or not detail:
-            return ""
-        return _LANE_CONTEXT_TPL.format(lane=lane.title(), lane_detail=detail)
+    _LANE_BLOCKS = {
+        "import":      _LANE_IMPORT,
+        "export":      _LANE_EXPORT,
+        "cross trade": _LANE_CROSSTRADE,
+    }
+    _AIR_COMBO = {
+        "import":      _AIR_IMPORT_EXAMPLES,
+        "export":      _AIR_EXPORT_EXAMPLES,
+        "cross trade": _AIR_CROSSTRADE_EXAMPLES,
+    }
+    _FCL_COMBO = {
+        "import":      _FCL_IMPORT_EXAMPLES,
+        "export":      _FCL_EXPORT_EXAMPLES,
+        "cross trade": _FCL_CROSSTRADE_EXAMPLES,
+    }
+    _LCL_COMBO = {
+        "import":      _LCL_IMPORT_EXAMPLES,
+        "export":      _LCL_EXPORT_EXAMPLES,
+        "cross trade": _LCL_CROSSTRADE_EXAMPLES,
+    }
+
+    _SEP = "─" * 77
+
+    def _lane_block(self, lane: str) -> str:
+        return self._LANE_BLOCKS.get(lane.lower().strip(), "")
 
     def _build_air_instruction(self, lane: str = "") -> str:
-        lane_section = f"\n\n{self._build_lane_context(lane)}" if lane else ""
-        return f"""{_AIR_ROLE}
-
-{_INQUIRY_FILTER}{lane_section}
-
-{_AIR_RATE_NOTATION}
-
-{_AIR_BUCKETS}
-
-{_AIR_CANONICAL}
-
-{_AIR_EXAMPLES}
-
-{_VERIFY}
-
-─────────────────────────────────────────────────────────────────────────────
-{_AIR_JSON_SCHEMA}
-
-Extract all charges from the document(s) provided above."""
+        lane = lane.lower().strip()
+        lane_section = f"\n\n{self._lane_block(lane)}" if lane else ""
+        combo = self._AIR_COMBO.get(lane, "")
+        combo_section = f"\n\n{combo}" if combo else ""
+        return (
+            f"{_AIR_ROLE}\n\n"
+            f"{_INQUIRY_FILTER}{lane_section}\n\n"
+            f"{_AIR_RATE_NOTATION}\n\n"
+            f"{_AIR_BUCKETS}\n\n"
+            f"{_AIR_CANONICAL}\n\n"
+            f"{_AIR_COMMON_EXAMPLES}{combo_section}\n\n"
+            f"{_VERIFY}\n\n"
+            f"{self._SEP}\n{_AIR_JSON_SCHEMA}\n\n"
+            f"Extract all charges from the document(s) provided above."
+        )
 
     def _build_fcl_instruction(self, lane: str = "") -> str:
-        lane_section = f"\n\n{self._build_lane_context(lane)}" if lane else ""
-        return f"""{_FCL_ROLE}
-
-{_INQUIRY_FILTER}{lane_section}
-
-{_FCL_CONTAINER_SELECTION}
-
-{_FCL_BUCKETS}
-
-{_FCL_CANONICAL}
-
-{_FCL_EXAMPLES}
-
-{_VERIFY}
-
-─────────────────────────────────────────────────────────────────────────────
-{_FCL_JSON_SCHEMA}
-
-Extract all charges from the document(s) provided above."""
+        lane = lane.lower().strip()
+        lane_section = f"\n\n{self._lane_block(lane)}" if lane else ""
+        combo = self._FCL_COMBO.get(lane, "")
+        combo_section = f"\n\n{combo}" if combo else ""
+        return (
+            f"{_FCL_ROLE}\n\n"
+            f"{_INQUIRY_FILTER}{lane_section}\n\n"
+            f"{_FCL_CONTAINER_SELECTION}\n\n"
+            f"{_FCL_BUCKETS}\n\n"
+            f"{_FCL_CANONICAL}\n\n"
+            f"{_FCL_COMMON_EXAMPLES}{combo_section}\n\n"
+            f"{_VERIFY}\n\n"
+            f"{self._SEP}\n{_FCL_JSON_SCHEMA}\n\n"
+            f"Extract all charges from the document(s) provided above."
+        )
 
     def _build_lcl_instruction(self, lane: str = "") -> str:
-        lane_section = f"\n\n{self._build_lane_context(lane)}" if lane else ""
-        return f"""{_LCL_ROLE}
-
-{_INQUIRY_FILTER}{lane_section}
-
-{_LCL_BUCKETS}
-
-{_LCL_CANONICAL}
-
-{_LCL_EXAMPLES}
-
-{_VERIFY}
-
-─────────────────────────────────────────────────────────────────────────────
-{_LCL_JSON_SCHEMA}
-
-Extract all charges from the document(s) provided above."""
+        lane = lane.lower().strip()
+        lane_section = f"\n\n{self._lane_block(lane)}" if lane else ""
+        combo = self._LCL_COMBO.get(lane, "")
+        combo_section = f"\n\n{combo}" if combo else ""
+        return (
+            f"{_LCL_ROLE}\n\n"
+            f"{_INQUIRY_FILTER}{lane_section}\n\n"
+            f"{_LCL_BUCKETS}\n\n"
+            f"{_LCL_CANONICAL}\n\n"
+            f"{_LCL_COMMON_EXAMPLES}{combo_section}\n\n"
+            f"{_VERIFY}\n\n"
+            f"{self._SEP}\n{_LCL_JSON_SCHEMA}\n\n"
+            f"Extract all charges from the document(s) provided above."
+        )
 
     # ------------------------------------------------------------------
     # API call helpers

@@ -17,16 +17,27 @@ logging.getLogger("pdfminer").setLevel(logging.ERROR)
 
 
 def main():
+    from PySide6.QtCore import QEvent, QObject
     from PySide6.QtGui import QFont
-    from PySide6.QtWidgets import QApplication, QMessageBox
+    from PySide6.QtWidgets import QApplication, QComboBox, QMessageBox
 
     from src.services.dialog_theme import APP_DIALOG_STYLE
     from src.services.settings_service import DEFAULT_GEMINI_MODEL, load_settings
+
+    class _NoScrollFilter(QObject):
+        def eventFilter(self, obj, event):
+            if isinstance(obj, QComboBox) and event.type() == QEvent.Type.Wheel:
+                if not obj.hasFocus():
+                    return True  # swallow the event
+            return False
 
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
     app.setFont(QFont("Segoe UI", 10))
     app.setStyleSheet(APP_DIALOG_STYLE)
+
+    _scroll_guard = _NoScrollFilter(app)
+    app.installEventFilter(_scroll_guard)
 
     settings = load_settings()
 

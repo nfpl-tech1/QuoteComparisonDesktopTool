@@ -15,7 +15,8 @@ logger = logging.getLogger(__name__)
 @dataclass
 class DocumentParts:
     text_parts: list[str] = field(default_factory=list)
-    pdf_bytes: list[tuple[str, bytes]] = field(default_factory=list)  # (label, data)
+    pdf_bytes: list[tuple[str, bytes]] = field(default_factory=list)    # (label, data)
+    image_bytes: list[tuple[str, str, bytes]] = field(default_factory=list)  # (label, mime_type, data)
 
 
 # ---------------------------------------------------------------------------
@@ -301,6 +302,43 @@ def _looks_like_pdf(data: bytes) -> bool:
     return data[:4] == b"%PDF"
 
 
+_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
+_IMAGE_MIME = {
+    ".png":  "image/png",
+    ".jpg":  "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif":  "image/gif",
+    ".webp": "image/webp",
+    ".bmp":  "image/bmp",
+}
+# Images below this threshold are almost certainly logos / spacers / icons.
+_IMAGE_MIN_BYTES = 20_000
+# Filename fragments that reliably indicate a signature / decorative image.
+_SIG_PATTERNS = {"logo", "sig", "banner", "footer", "header", "icon", "avatar", "badge"}
+
+
+def _looks_like_image(data: bytes) -> tuple[bool, str]:
+    """Return (is_image, mime_type) based on magic bytes."""
+    if len(data) < 4:
+        return False, ""
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return True, "image/png"
+    if data[:3] == b"\xff\xd8\xff":
+        return True, "image/jpeg"
+    if data[:6] in (b"GIF87a", b"GIF89a"):
+        return True, "image/gif"
+    if data[:4] == b"RIFF" and len(data) >= 12 and data[8:12] == b"WEBP":
+        return True, "image/webp"
+    return False, ""
+
+
+def _is_signature_image(fname: str, data: bytes) -> bool:
+    """Return True if this image looks like a logo / signature decoration (skip it)."""
+    if len(data) < _IMAGE_MIN_BYTES:
+        return True
+    return any(pat in fname.lower() for pat in _SIG_PATTERNS)
+
+
 _EXCEL_EXTS = {".xlsx", ".xlsm", ".xltx", ".xltm"}
 _XLS_EXTS   = {".xls", ".xlt"}
 _WORD_EXTS  = {".docx", ".docm"}
@@ -573,6 +611,16 @@ def _walk_for_decompose(msg_obj, parts: DocumentParts) -> None:
                     os.unlink(tmp_path)
                 except OSError:
                     pass
+
+        elif ext in _IMAGE_EXTS or _looks_like_image(data)[0]:
+            # Determine MIME type from extension, or fall back to magic bytes
+            mime = _IMAGE_MIME.get(ext) or _looks_like_image(data)[1]
+            if mime and not _is_signature_image(fname, data):
+                label = fname or f"image{len(parts.image_bytes) + 1}{ext or '.img'}"
+                parts.image_bytes.append((label, mime, bytes(data)))
+                logger.debug("body image queued for upload: %s (%d bytes)", label, len(data))
+            else:
+                logger.debug("signature/small image skipped: %s (%d bytes)", fname, len(data))
 
 
 # ---------------------------------------------------------------------------

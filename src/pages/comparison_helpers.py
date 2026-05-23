@@ -71,6 +71,18 @@ def _fmt_total_inr(flat_usd: float, variable_usd: dict[str, float],
     return " + ".join(parts) if parts else "Rs. 0"
 
 
+def _fmt_total_eur(flat_usd: float, variable_usd: dict[str, float],
+                   eur_rate: float) -> str:
+    parts = []
+    if flat_usd > 0:
+        parts.append(f"€ {flat_usd * eur_rate:,.2f}")
+    for unit, rate_usd in sorted(variable_usd.items()):
+        rate_eur = rate_usd * eur_rate
+        rate_str = f"{rate_eur:,.4f}".rstrip("0").rstrip(".")
+        parts.append(f"€ {rate_str}/{_unit_abbrev(unit)}")
+    return " + ".join(parts) if parts else "€ 0.00"
+
+
 # ---------------------------------------------------------------------------
 # Cost computation helpers
 # ---------------------------------------------------------------------------

@@ -36,6 +36,10 @@ class CurrencyService:
     def usd_to_inr(self) -> float:
         return self.rates.get("INR", 84.5)
 
+    @property
+    def usd_to_eur(self) -> float:
+        return self.rates.get("EUR", 0.92)
+
     def rate_display(self) -> str:
         src = "live" if self.is_live else "fallback"
         date_str = self.last_updated.strftime("%d %b %Y") if self.last_updated else "—"

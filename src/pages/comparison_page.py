@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
 from src.constants import AIR_IMPORT_BUCKETS, FCL_BUCKETS, LCL_BUCKETS
 from src.pages.comparison_helpers import (
     _FLAT_UNITS, _UNIT_ABBREVS, _UNIT_FROM_ABBREV,
-    _is_flat, _unit_abbrev, _fmt_total_usd, _fmt_total_inr,
+    _is_flat, _unit_abbrev, _fmt_total_usd, _fmt_total_inr, _fmt_total_eur,
     _cell_display, _parse_cell_input,
 )
 from src.pages.comparison_dialogs import (
@@ -202,6 +202,7 @@ class ComparisonPage(QWidget):
         self._worker: RateFetchWorker | None = None
         self._popup_on_done = False
         self._row_specs: list = []
+        self._hidden_charge_keys: set[tuple[str, str]] = set()
         self._charge_weight: float = 0.0
         self._current_mode: str = "air"
         self._volume_cbm: float = 0.0
@@ -316,6 +317,17 @@ class ComparisonPage(QWidget):
         preview_btn.setStyleSheet(self._sm_btn_style())
         preview_btn.clicked.connect(self._preview_imported)
         toolbar.addWidget(preview_btn)
+
+        self._show_hidden_btn = QPushButton("Show hidden (0)")
+        self._show_hidden_btn.setFixedHeight(28)
+        self._show_hidden_btn.setStyleSheet(
+            "QPushButton{background:#FFF3E0;color:#E65100;border:1px solid #FFCC80;"
+            "border-radius:4px;padding:0 10px;font-size:12px;font-weight:600;}"
+            "QPushButton:hover{background:#FFE0B2;}"
+        )
+        self._show_hidden_btn.clicked.connect(self._show_all_hidden)
+        self._show_hidden_btn.setVisible(False)
+        toolbar.addWidget(self._show_hidden_btn)
 
         toolbar.addStretch()
 
@@ -508,7 +520,9 @@ class ComparisonPage(QWidget):
         if resp != QMessageBox.Yes:
             return
 
-        # Clear in-memory vendors
+        # Clear hidden rows and in-memory vendors
+        self._hidden_charge_keys.clear()
+        self._show_hidden_btn.setVisible(False)
         self.app.vendors.clear()
 
         # Clear import page file rows (no extra confirmation)
@@ -734,6 +748,13 @@ class ComparisonPage(QWidget):
             if rate and rate > 0:
                 return rate
         return self.app.currency_service.usd_to_inr
+
+    def _get_usd_to_eur(self) -> float:
+        if self._custom_rates:
+            rate = self._custom_rates.get("EUR")
+            if rate and rate > 0:
+                return rate
+        return self.app.currency_service.usd_to_eur
 
     def _open_custom_rates(self):
         currencies: set = set()
@@ -975,6 +996,7 @@ class ComparisonPage(QWidget):
                 for name_lower, display in bucket_charge_rows[bkt]:
                     row_specs.append(("charge", bkt, name_lower, display))
         row_specs.append(("total_usd",))
+        row_specs.append(("total_eur",))
         row_specs.append(("total_inr",))
         self._row_specs = row_specs
 
@@ -1034,7 +1056,7 @@ class ComparisonPage(QWidget):
                 item.setFont(hdr_font)
                 item.setFlags(_NON_EDIT)
                 self.table.setItem(r_idx, 0, item)
-                self.table.setRowHeight(r_idx, 36)
+                self.table.setRowHeight(r_idx, 52)  # _update_totals will resize to 90 if needs_actual
                 for c_idx in range(1, n_cols):
                     cell = QTableWidgetItem("")
                     cell.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -1106,6 +1128,10 @@ class ComparisonPage(QWidget):
                 self._fill_total_row(r_idx, n_cols, flat_totals, variable_totals,
                                      "total_usd", bold_font)
 
+            elif spec[0] == "total_eur":
+                self._fill_total_row(r_idx, n_cols, flat_totals, variable_totals,
+                                     "total_eur", bold_font)
+
             elif spec[0] == "total_inr":
                 self._fill_total_row(r_idx, n_cols, flat_totals, variable_totals,
                                      "total_inr", bold_font)
@@ -1116,12 +1142,14 @@ class ComparisonPage(QWidget):
             self.table.setColumnWidth(c, max(200, self.table.columnWidth(c)))
 
         self.table.blockSignals(False)
+        self._reapply_hidden_rows()
         self._update_totals()
 
     def _fill_total_row(self, r_idx: int, n_cols: int,
                         flat_totals: dict, variable_totals: dict,
                         spec_type: str, bold_font: QFont):
         inr_rate = self._get_usd_to_inr()
+        eur_rate = self._get_usd_to_eur()
         mode = self._current_mode
 
         if spec_type == "total_usd":
@@ -1133,6 +1161,8 @@ class ComparisonPage(QWidget):
                 lbl_txt = f"  Total USD  (at {cbm:.3f} CBM)" if cbm > 0 else "  Total USD"
             else:
                 lbl_txt = "  Total USD"
+        elif spec_type == "total_eur":
+            lbl_txt = "  Total EUR"
         else:
             if mode == "air":
                 wt = self._charge_weight
@@ -1168,6 +1198,15 @@ class ComparisonPage(QWidget):
                 else:
                     display = breakdown
                     cmp_val = flat + sum(variable.values())
+            elif spec_type == "total_eur":
+                breakdown = _fmt_total_eur(flat, variable, eur_rate)
+                if needs_actual:
+                    actual_usd = self._compute_actual(flat, variable)
+                    display = f"{breakdown}\n= € {actual_usd * eur_rate:,.2f}"
+                    cmp_val = actual_usd * eur_rate
+                else:
+                    display = breakdown
+                    cmp_val = (flat + sum(variable.values())) * eur_rate
             else:
                 breakdown = _fmt_total_inr(flat, variable, inr_rate)
                 if needs_actual:
@@ -1236,6 +1275,8 @@ class ComparisonPage(QWidget):
 
         # Row specs: shipping_line_row first, then optional info rows, then buckets/charges
         row_specs: list = [("shipping_line_row",)]
+        if any(vd.container_type for vd in ordered_vendors):
+            row_specs.append(("info", "container_type", "Container"))
         if any(vd.etd for vd in ordered_vendors):
             row_specs.append(("info", "etd", "ETD"))
         if any(vd.transit_days for vd in ordered_vendors):
@@ -1250,6 +1291,7 @@ class ComparisonPage(QWidget):
                 for name_lower, display in bucket_charge_rows[bkt]:
                     row_specs.append(("charge", bkt, name_lower, display))
         row_specs.append(("total_usd",))
+        row_specs.append(("total_eur",))
         row_specs.append(("total_inr",))
         self._row_specs = row_specs
         # Store vendor list for _update_totals and _add_vendor_column
@@ -1305,7 +1347,7 @@ class ComparisonPage(QWidget):
                 item.setFont(hdr_font)
                 item.setFlags(_NON_EDIT)
                 self.table.setItem(r_idx, 0, item)
-                self.table.setRowHeight(r_idx, 36)
+                self.table.setRowHeight(r_idx, 52)  # _update_totals will resize to 90 if needs_actual
                 for c_idx in range(1, n_cols):
                     cell = QTableWidgetItem("")
                     cell.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -1377,6 +1419,10 @@ class ComparisonPage(QWidget):
                 self._fill_total_row(r_idx, n_cols, flat_totals, variable_totals,
                                      "total_usd", bold_font)
 
+            elif spec[0] == "total_eur":
+                self._fill_total_row(r_idx, n_cols, flat_totals, variable_totals,
+                                     "total_eur", bold_font)
+
             elif spec[0] == "total_inr":
                 self._fill_total_row(r_idx, n_cols, flat_totals, variable_totals,
                                      "total_inr", bold_font)
@@ -1387,6 +1433,7 @@ class ComparisonPage(QWidget):
             self.table.setColumnWidth(c, max(200, self.table.columnWidth(c)))
 
         self.table.blockSignals(False)
+        self._reapply_hidden_rows()
         self._update_totals()
 
     # ------------------------------------------------------------------
@@ -1443,6 +1490,8 @@ class ComparisonPage(QWidget):
         for r_idx, spec in enumerate(self._row_specs):
             if spec[0] != "charge":
                 continue
+            if self.table.isRowHidden(r_idx):
+                continue
             bucket = spec[1]
             for c_idx in range(1, n_cols):
                 it = self.table.item(r_idx, c_idx)
@@ -1463,6 +1512,7 @@ class ComparisonPage(QWidget):
                     bucket_vtot[unit] = bucket_vtot.get(unit, 0.0) + usd_val
 
         inr_rate = self._get_usd_to_inr()
+        eur_rate = self._get_usd_to_eur()
         mode = self._current_mode
         needs_actual = self._needs_actual_total()
 
@@ -1478,7 +1528,7 @@ class ComparisonPage(QWidget):
                 lbl = self.table.item(r_idx, 0)
                 if lbl:
                     lbl.setText(f"  {bucket}")
-                self.table.setRowHeight(r_idx, 54 if needs_actual else 36)
+                self.table.setRowHeight(r_idx, (90 if needs_actual else 52))
                 for c_idx in range(1, n_cols):
                     flat = bucket_flat_totals[bucket][c_idx]
                     variable = bucket_variable_totals[bucket][c_idx]
@@ -1486,12 +1536,14 @@ class ComparisonPage(QWidget):
                     if not it:
                         continue
                     if flat > 0 or variable:
-                        breakdown = _fmt_total_usd(flat, variable)
+                        usd_line = _fmt_total_usd(flat, variable)
+                        eur_line = _fmt_total_eur(flat, variable, eur_rate)
                         if needs_actual:
                             actual = self._compute_actual(flat, variable)
-                            display = f"{breakdown}\n= $ {actual:,.2f}"
+                            display = (f"{usd_line}\n= $ {actual:,.2f}"
+                                       f"\n{eur_line}\n= € {actual * eur_rate:,.2f}")
                         else:
-                            display = breakdown
+                            display = f"{usd_line}\n{eur_line}"
                         it.setText(display)
                         it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                         it.setFont(bold_font)
@@ -1526,6 +1578,39 @@ class ComparisonPage(QWidget):
                     else:
                         display = breakdown
                         cmp_val = flat + sum(variable.values())
+                    it = self.table.item(r_idx, c_idx)
+                    if it:
+                        it.setText(display)
+                        it.setData(Qt.UserRole, cmp_val)
+                        it.setBackground(QBrush(QColor(_TOT_BG)))
+                        it.setForeground(QBrush(QColor(_DARK)))
+                    pairs.append((c_idx, cmp_val))
+                if len(pairs) >= 2:
+                    min_v = min(v for _, v in pairs)
+                    for c_idx, val in pairs:
+                        if abs(val - min_v) < 0.001 and val > 0:
+                            it = self.table.item(r_idx, c_idx)
+                            if it:
+                                it.setBackground(QBrush(QColor(_GREEN)))
+                                it.setForeground(QBrush(QColor(_GREEN_FG)))
+
+            elif spec[0] == "total_eur":
+                lbl = self.table.item(r_idx, 0)
+                if lbl:
+                    lbl.setText("  Total EUR")
+                self.table.setRowHeight(r_idx, 60 if needs_actual else 44)
+                pairs = []
+                for c_idx in range(1, n_cols):
+                    flat = flat_totals[c_idx]
+                    variable = variable_totals[c_idx]
+                    breakdown = _fmt_total_eur(flat, variable, eur_rate)
+                    if needs_actual:
+                        actual_usd = self._compute_actual(flat, variable)
+                        display = f"{breakdown}\n= € {actual_usd * eur_rate:,.2f}"
+                        cmp_val = actual_usd * eur_rate
+                    else:
+                        display = breakdown
+                        cmp_val = (flat + sum(variable.values())) * eur_rate
                     it = self.table.item(r_idx, c_idx)
                     if it:
                         it.setText(display)
@@ -1668,8 +1753,8 @@ class ComparisonPage(QWidget):
                 cell.setData(Qt.UserRole, None)
                 cell.setFlags(_EDITABLE)
                 self.table.setItem(r_idx, col, cell)
-            elif spec[0] in ("total_usd", "total_inr"):
-                txt = "$ 0.00" if spec[0] == "total_usd" else "Rs. 0"
+            elif spec[0] in ("total_usd", "total_eur", "total_inr"):
+                txt = "$ 0.00" if spec[0] == "total_usd" else ("€ 0.00" if spec[0] == "total_eur" else "Rs. 0")
                 cell = QTableWidgetItem(txt)
                 cell.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 cell.setFont(bold_font)
@@ -1703,12 +1788,12 @@ class ComparisonPage(QWidget):
                 in_bucket = True
             elif in_bucket and spec[0] == "charge" and spec[1] == bucket:
                 insert_after = r_idx
-            elif in_bucket and spec[0] in ("header", "vendor_header", "shipping_line_row", "airline_row", "info", "total_usd", "total_inr"):
+            elif in_bucket and spec[0] in ("header", "vendor_header", "shipping_line_row", "airline_row", "info", "total_usd", "total_eur", "total_inr"):
                 break
 
         if insert_after < 0:
             tot_idx = next(
-                (i for i, s in enumerate(self._row_specs) if s[0] == "total_usd"),
+                (i for i, s in enumerate(self._row_specs) if s[0] in ("total_usd", "total_eur", "total_inr")),
                 len(self._row_specs) - 2,
             )
             self._row_specs.insert(tot_idx, ("header", bucket))
@@ -1766,6 +1851,40 @@ class ComparisonPage(QWidget):
         self.table.removeRow(r_idx)
         self._update_totals()
 
+    def _hide_charge_row(self, r_idx: int):
+        if r_idx < 0 or r_idx >= len(self._row_specs):
+            return
+        spec = self._row_specs[r_idx]
+        if spec[0] != "charge":
+            return
+        _, bkt, name_lower, _ = spec
+        self._hidden_charge_keys.add((bkt, name_lower))
+        self.table.setRowHidden(r_idx, True)
+        self._update_totals()
+        self._update_hidden_btn()
+
+    def _show_all_hidden(self):
+        self._hidden_charge_keys.clear()
+        for r_idx, spec in enumerate(self._row_specs):
+            if spec[0] == "charge":
+                self.table.setRowHidden(r_idx, False)
+        self._update_totals()
+        self._update_hidden_btn()
+
+    def _reapply_hidden_rows(self):
+        for r_idx, spec in enumerate(self._row_specs):
+            if spec[0] == "charge":
+                _, bkt, name_lower, _ = spec
+                if (bkt, name_lower) in self._hidden_charge_keys:
+                    self.table.setRowHidden(r_idx, True)
+        self._update_hidden_btn()
+
+    def _update_hidden_btn(self):
+        n = len(self._hidden_charge_keys)
+        self._show_hidden_btn.setVisible(n > 0)
+        if n > 0:
+            self._show_hidden_btn.setText(f"Show hidden ({n})")
+
     def _delete_vendor_column(self, c_idx: int):
         if c_idx <= 0:
             return
@@ -1780,8 +1899,8 @@ class ComparisonPage(QWidget):
         if 0 <= r_idx < len(self._row_specs):
             spec = self._row_specs[r_idx]
             if spec[0] == "charge":
-                act = QAction(f"Delete row  '{spec[3]}'", self)
-                act.triggered.connect(lambda: self._delete_charge_row(r_idx))
+                act = QAction(f"Hide row  '{spec[3]}'", self)
+                act.triggered.connect(lambda: self._hide_charge_row(r_idx))
                 menu.addAction(act)
 
         if c_idx > 0:
@@ -1963,7 +2082,7 @@ class ComparisonPage(QWidget):
                     else:
                         c.font = Font(bold=True, size=11, color="1E2A3A")
 
-            elif spec[0] in ("total_usd", "total_inr"):
+            elif spec[0] in ("total_usd", "total_eur", "total_inr"):
                 for c_idx in range(1, n_cols + 1):
                     c = ws.cell(row=r_idx, column=c_idx)
                     c.fill = tot_fill

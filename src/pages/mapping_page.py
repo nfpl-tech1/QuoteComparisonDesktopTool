@@ -343,7 +343,8 @@ class MappingPage(QWidget):
             self._tables[vd.uid] = table
 
             if vd.quote_type == "fcl" and vd.shipping_line:
-                tab_label = f"{vd.vendor_name} [FCL · {vd.shipping_line}]"
+                ct_suffix = f" · {vd.container_type}" if vd.container_type else ""
+                tab_label = f"{vd.vendor_name} [FCL · {vd.shipping_line}{ct_suffix}]"
             elif vd.quote_type == "fcl":
                 tab_label = f"{vd.vendor_name} [FCL]"
             elif vd.quote_type == "lcl":

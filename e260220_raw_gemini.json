@@ -1,0 +1,2546 @@
+﻿
+// ======================================================================
+// FILE: HEP
+// ======================================================================
+{
+  "vendor_name": "Heppner Gronau GmbH",
+  "shipping_lines": [
+    {
+      "shipping_line": "MAERSK",
+      "container_type": "20ft GP",
+      "etd": "",
+      "transit_days": "37 days via Salalah",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 495.0,
+          "remarks": "per trip, for drop and pick up please use twice; THC at Origin is included; Offer valid until 15.06.2026; Transport insurance available on request; Possible third-party costs such as demurrage, storage fees, detention etc. will be passed on to the customer; Free loading and unloading time are two hours for container types 20`DC/ 40`DC and 40´HC. Per commenced half hour we charge 45 EUR",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 585.0,
+          "remarks": "THC at Origin is included; Offer valid until 15.06.2026; Transport insurance available on request; Possible third-party costs such as demurrage, storage fees, detention etc. will be passed on to the customer; Free loading and unloading time are two hours for container types 20`DC/ 40`DC and 40´HC. Per commenced half hour we charge 45 EUR",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "MAERSK",
+      "container_type": "40ft HC",
+      "etd": "",
+      "transit_days": "37 days via Salalah",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 535.0,
+          "remarks": "per trip, for drop and pick up please use twice; THC at Origin is included; Offer valid until 15.06.2026; Transport insurance available on request; Possible third-party costs such as demurrage, storage fees, detention etc. will be passed on to the customer; Free loading and unloading time are two hours for container types 20`DC/ 40`DC and 40´HC. Per commenced half hour we charge 45 EUR",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 825.0,
+          "remarks": "THC at Origin is included; Offer valid until 15.06.2026; Transport insurance available on request; Possible third-party costs such as demurrage, storage fees, detention etc. will be passed on to the customer; Free loading and unloading time are two hours for container types 20`DC/ 40`DC and 40´HC. Per commenced half hour we charge 45 EUR",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "CMA CGM",
+      "container_type": "20ft GP",
+      "etd": "",
+      "transit_days": "48 days on direct schedule",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 495.0,
+          "remarks": "per trip, for drop and pick up please use twice; THC at Origin is included; Offer valid until 15.06.2026; Transport insurance available on request; Possible third-party costs such as demurrage, storage fees, detention etc. will be passed on to the customer; Free loading and unloading time are two hours for container types 20`DC/ 40`DC and 40´HC. Per commenced half hour we charge 45 EUR",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 715.0,
+          "remarks": "THC at Origin is included; Offer valid until 15.06.2026; Transport insurance available on request; Possible third-party costs such as demurrage, storage fees, detention etc. will be passed on to the customer; Free loading and unloading time are two hours for container types 20`DC/ 40`DC and 40´HC. Per commenced half hour we charge 45 EUR",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "CMA CGM",
+      "container_type": "40ft HC",
+      "etd": "",
+      "transit_days": "48 days on direct schedule",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 535.0,
+          "remarks": "per trip, for drop and pick up please use twice; THC at Origin is included; Offer valid until 15.06.2026; Transport insurance available on request; Possible third-party costs such as demurrage, storage fees, detention etc. will be passed on to the customer; Free loading and unloading time are two hours for container types 20`DC/ 40`DC and 40´HC. Per commenced half hour we charge 45 EUR",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 595.0,
+          "remarks": "THC at Origin is included; Offer valid until 15.06.2026; Transport insurance available on request; Possible third-party costs such as demurrage, storage fees, detention etc. will be passed on to the customer; Free loading and unloading time are two hours for container types 20`DC/ 40`DC and 40´HC. Per commenced half hour we charge 45 EUR",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "ONE",
+      "container_type": "20ft GP",
+      "etd": "",
+      "transit_days": "43 days on direct schedule",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 495.0,
+          "remarks": "per trip, for drop and pick up please use twice; THC at Origin is included; Offer valid until 15.06.2026; Transport insurance available on request; Possible third-party costs such as demurrage, storage fees, detention etc. will be passed on to the customer; Free loading and unloading time are two hours for container types 20`DC/ 40`DC and 40´HC. Per commenced half hour we charge 45 EUR",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 895.0,
+          "remarks": "THC at Origin is included; Offer valid until 15.06.2026; Transport insurance available on request; Possible third-party costs such as demurrage, storage fees, detention etc. will be passed on to the customer; Free loading and unloading time are two hours for container types 20`DC/ 40`DC and 40´HC. Per commenced half hour we charge 45 EUR",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "ONE",
+      "container_type": "40ft HC",
+      "etd": "",
+      "transit_days": "43 days on direct schedule",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 535.0,
+          "remarks": "per trip, for drop and pick up please use twice; THC at Origin is included; Offer valid until 15.06.2026; Transport insurance available on request; Possible third-party costs such as demurrage, storage fees, detention etc. will be passed on to the customer; Free loading and unloading time are two hours for container types 20`DC/ 40`DC and 40´HC. Per commenced half hour we charge 45 EUR",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 1185.0,
+          "remarks": "THC at Origin is included; Offer valid until 15.06.2026; Transport insurance available on request; Possible third-party costs such as demurrage, storage fees, detention etc. will be passed on to the customer; Free loading and unloading time are two hours for container types 20`DC/ 40`DC and 40´HC. Per commenced half hour we charge 45 EUR",
+          "if_applicable": false
+        }
+      ]
+    }
+  ]
+}
+
+======================================================================
+FILE: CAV
+======================================================================
+{
+  "vendor_name": "Cavalier International Air & Ocean Freight B.V.",
+  "shipping_lines": [
+    {
+      "shipping_line": "YangMing",
+      "container_type": "20ft GP",
+      "etd": "",
+      "transit_days": "41 Days",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 510.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 550.0,
+          "remarks": "2 hours free of loading, after this euro 85,00 per hour",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Emergency Surcharge",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 100.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Delta Surcharge",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 65.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "THC",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 32.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Export Clearance",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Shipment",
+          "rate": 37.5,
+          "remarks": "first 3 HS codes; for each additional HS code € 7,50",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 62.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Telex Release Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 42.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Documentation Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Shipment",
+          "rate": 55.0,
+          "remarks": "",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "YangMing",
+      "container_type": "40ft GP",
+      "etd": "",
+      "transit_days": "41 Days",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 510.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 550.0,
+          "remarks": "2 hours free of loading, after this euro 85,00 per hour",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Emergency Surcharge",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 100.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Delta Surcharge",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 65.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "THC",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 32.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Export Clearance",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Shipment",
+          "rate": 37.5,
+          "remarks": "first 3 HS codes; for each additional HS code € 7,50",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 62.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Telex Release Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 42.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Documentation Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Shipment",
+          "rate": 55.0,
+          "remarks": "",
+          "if_applicable": false
+        }
+      ]
+    }
+  ]
+}
+
+======================================================================
+FILE: CFS
+======================================================================
+{
+  "vendor_name": "CF&S",
+  "shipping_lines": [
+    {
+      "shipping_line": "Herfurth Maritime Benelux",
+      "container_type": "20ft GP",
+      "etd": "",
+      "transit_days": "38 days",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "FCA Charges",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 590.0,
+          "remarks": "Includes 2 hours free for stuffing.",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 75.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 775.0,
+          "remarks": "POL Rotterdam, POD Nhava Sheva. Includes BAF and Origin THC.",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "Herfurth Maritime Benelux",
+      "container_type": "40ft GP",
+      "etd": "",
+      "transit_days": "38 days",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "FCA Charges",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 590.0,
+          "remarks": "Includes 2 hours free for stuffing.",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 75.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 825.0,
+          "remarks": "POL Rotterdam, POD Nhava Sheva. Includes BAF and Origin THC.",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "Herfurth Maritime Benelux",
+      "container_type": "20ft GP",
+      "etd": "",
+      "transit_days": "41 days",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "FCA Charges",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 590.0,
+          "remarks": "Includes 2 hours free for stuffing.",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 75.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 625.0,
+          "remarks": "POL Rotterdam, POD Mundra (Via Nhava Sheva). Includes BAF and Origin THC.",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "Herfurth Maritime Benelux",
+      "container_type": "40ft GP",
+      "etd": "",
+      "transit_days": "41 days",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "FCA Charges",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 590.0,
+          "remarks": "Includes 2 hours free for stuffing.",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 75.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 675.0,
+          "remarks": "POL Rotterdam, POD Mundra (Via Nhava Sheva). Includes BAF and Origin THC.",
+          "if_applicable": false
+        }
+      ]
+    }
+  ]
+}
+
+======================================================================
+FILE: LFS  RTM-Q-039189  RTM-Q-039210
+======================================================================
+{
+  "vendor_name": "Lift Freight Services B.V.",
+  "shipping_lines": [
+    {
+      "shipping_line": "Yangming Marine Transport Corp",
+      "container_type": "20ft GP",
+      "etd": "",
+      "transit_days": "40 Days",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 625.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "BAF",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 43.1,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 55.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Handling charges",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 75.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "VGM Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 50.0,
+          "remarks": "method 2 (Gross weight with added tare of container)",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 560.0,
+          "remarks": "including 2 hours of free loading",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "Yangming Marine Transport Corp",
+      "container_type": "40ft HC",
+      "etd": "",
+      "transit_days": "40 Days",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 625.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "BAF",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 86.21,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 55.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Handling charges",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 75.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "VGM Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 50.0,
+          "remarks": "method 2 (Gross weight with added tare of container)",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 560.0,
+          "remarks": "including 2 hours of free loading",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "Yangming Marine Transport Corp",
+      "container_type": "20ft GP",
+      "etd": "",
+      "transit_days": "40 Days",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 495.73,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "BAF",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 43.11,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 55.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Handling charges",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 75.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Export Clearance",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 50.0,
+          "remarks": "2 HS codes incl.",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "VGM Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 50.0,
+          "remarks": "method 2 (Gross weight with added tare of container)",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 560.0,
+          "remarks": "including 2 hours of free loading",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "Yangming Marine Transport Corp",
+      "container_type": "40ft HC",
+      "etd": "",
+      "transit_days": "40 Days",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 495.73,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "BAF",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 86.21,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 55.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Handling charges",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 75.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Export Clearance",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 50.0,
+          "remarks": "2 HS codes incl.",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "VGM Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 50.0,
+          "remarks": "method 2 (Gross weight with added tare of container)",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 560.0,
+          "remarks": "including 2 hours of free loading",
+          "if_applicable": false
+        }
+      ]
+    }
+  ]
+}
+
+======================================================================
+FILE: LIT
+======================================================================
+{
+  "vendor_name": "L.I.T. Air & Sea GmbH",
+  "shipping_lines": [
+    {
+      "shipping_line": "",
+      "container_type": "20ft GP",
+      "etd": "",
+      "transit_days": "",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "USD",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 1355.0,
+          "remarks": "all-in rate; EXW Beusichem to CFR Mundra/JNPT; Valid until 31.05.2026; Subject to space/equipment and pre-carriage availability",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "",
+      "container_type": "40ft GP",
+      "etd": "",
+      "transit_days": "",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "USD",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 1465.0,
+          "remarks": "all-in rate; EXW Beusichem to CFR Mundra/JNPT; Valid until 31.05.2026; Subject to space/equipment and pre-carriage availability",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "Maersk",
+      "container_type": "20ft GP",
+      "etd": "",
+      "transit_days": "",
+      "free_days_origin": 0,
+      "free_days_destination": 4,
+      "charges": [
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "USD",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 1435.0,
+          "remarks": "all-in rate; EXW Beusichem to CFR Mundra/Nhava Sheva; Valid until 31.05.2026; Subject to space/equipment and pre-carriage availability; +USD 50 for 14 total free days at POD",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "Maersk",
+      "container_type": "40ft GP",
+      "etd": "",
+      "transit_days": "",
+      "free_days_origin": 0,
+      "free_days_destination": 4,
+      "charges": [
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "USD",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 1310.0,
+          "remarks": "all-in rate; EXW Beusichem to CFR Mundra/Nhava Sheva; Valid until 31.05.2026; Subject to space/equipment and pre-carriage availability; +USD 50 for 14 total free days at POD",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "CMA CGM",
+      "container_type": "20ft GP",
+      "etd": "",
+      "transit_days": "",
+      "free_days_origin": 0,
+      "free_days_destination": 4,
+      "charges": [
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "USD",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 1420.0,
+          "remarks": "all-in rate; EXW Beusichem to CFR Mundra/Nhava Sheva; Valid until 31.05.2026; Subject to space/equipment and pre-carriage availability",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "CMA CGM",
+      "container_type": "40ft GP",
+      "etd": "",
+      "transit_days": "",
+      "free_days_origin": 0,
+      "free_days_destination": 4,
+      "charges": [
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "USD",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 1590.0,
+          "remarks": "all-in rate; EXW Beusichem to CFR Mundra/Nhava Sheva; Valid until 31.05.2026; Subject to space/equipment and pre-carriage availability",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "Hapag-Lloyd",
+      "container_type": "20ft GP",
+      "etd": "",
+      "transit_days": "",
+      "free_days_origin": 0,
+      "free_days_destination": 4,
+      "charges": [
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "USD",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 1420.0,
+          "remarks": "all-in rate; EXW Beusichem to CFR Mundra/Nhava Sheva; Valid until 31.05.2026; Subject to space/equipment and pre-carriage availability; +USD 335 for 10 additional free days at POD",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "Hapag-Lloyd",
+      "container_type": "40ft GP",
+      "etd": "",
+      "transit_days": "",
+      "free_days_origin": 0,
+      "free_days_destination": 4,
+      "charges": [
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "USD",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 1590.0,
+          "remarks": "all-in rate; EXW Beusichem to CFR Mundra/Nhava Sheva; Valid until 31.05.2026; Subject to space/equipment and pre-carriage availability; +USD 670 for 10 additional free days at POD",
+          "if_applicable": false
+        }
+      ]
+    }
+  ]
+}
+
+======================================================================
+FILE: LOG   1124030  1124060
+======================================================================
+{
+  "vendor_name": "Logicall Trusted Logistics",
+  "shipping_lines": [
+    {
+      "shipping_line": "YML",
+      "container_type": "20ft GP",
+      "etd": "2026-06-04",
+      "transit_days": "~41 days",
+      "free_days_origin": 0,
+      "free_days_destination": 0,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 386.81,
+          "remarks": "2 hours free unloading afterwards waiting hours 45 EUR per started halfour.",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Fuel Surcharge (Pre-carriage)",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 381.55,
+          "remarks": "Applies to entire pickup operation.",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Port Congestion",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 15.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "THC",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 78.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Terminal Timeslot Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 30.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 75.0,
+          "remarks": "Electronic Issue",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Documentation Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 80.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Export Clearance",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 70.0,
+          "remarks": "Export customs document, 10EUR/extra HS Code",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Origin Handling",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 95.0,
+          "remarks": "FOB Charges",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 472.71,
+          "remarks": "Rates inclusive of THCL/CAF/BAF/SUEZ/ADEN GULF/ISPS/OW/LR/BK/CO/TAD/EU",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "BAF",
+          "currency": "EUR",
+          "unit_of_measurement": "Per TEU",
+          "rate": 43.05,
+          "remarks": "Emergency Bunker Surcharge, converted from 50 USD/TEU (1 TEU for 20ft)",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "YML",
+      "container_type": "40ft HC",
+      "etd": "2026-06-04",
+      "transit_days": "~41 days",
+      "free_days_origin": 0,
+      "free_days_destination": 0,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 386.81,
+          "remarks": "2 hours free unloading afterwards waiting hours 45 EUR per started halfour.",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Fuel Surcharge (Pre-carriage)",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 381.55,
+          "remarks": "Applies to entire pickup operation.",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Port Congestion",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 15.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "THC",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 78.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Terminal Timeslot Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 30.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 75.0,
+          "remarks": "Electronic Issue",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Documentation Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 80.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Export Clearance",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 70.0,
+          "remarks": "Export customs document, 10EUR/extra HS Code",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Origin Handling",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 95.0,
+          "remarks": "FOB Charges",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 515.76,
+          "remarks": "Rates inclusive of THCL/CAF/BAF/SUEZ/ADEN GULF/ISPS/OW/LR/BK/CO/TAD/EU",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "BAF",
+          "currency": "EUR",
+          "unit_of_measurement": "Per TEU",
+          "rate": 86.1,
+          "remarks": "Emergency Bunker Surcharge, converted from 50 USD/TEU (2 TEU for 40ft HC)",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "YML",
+      "container_type": "20ft GP",
+      "etd": "2026-06-04",
+      "transit_days": "~38 days",
+      "free_days_origin": 0,
+      "free_days_destination": 0,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 386.81,
+          "remarks": "2 hours free unloading afterwards waiting hours 45 EUR per started halfour.",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Fuel Surcharge (Pre-carriage)",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 381.55,
+          "remarks": "Applies to entire pickup operation.",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Port Congestion",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 15.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "THC",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 78.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Terminal Timeslot Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 30.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 75.0,
+          "remarks": "Electronic Issue",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Documentation Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 80.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Export Clearance",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 70.0,
+          "remarks": "Export customs document, 10EUR/extra HS Code",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Origin Handling",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 95.0,
+          "remarks": "FOB Charges",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 300.5,
+          "remarks": "Rates inclusive of THCL/CAF/BAF/SUEZ/ADEN GULF/ISPS/OW/LR/BK/CO/TAD/EU",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "BAF",
+          "currency": "EUR",
+          "unit_of_measurement": "Per TEU",
+          "rate": 43.05,
+          "remarks": "Emergency Bunker Surcharge, converted from 50 USD/TEU (1 TEU for 20ft)",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "YML",
+      "container_type": "40ft HC",
+      "etd": "2026-06-04",
+      "transit_days": "~38 days",
+      "free_days_origin": 0,
+      "free_days_destination": 0,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 386.81,
+          "remarks": "2 hours free unloading afterwards waiting hours 45 EUR per started halfour.",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Fuel Surcharge (Pre-carriage)",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 381.55,
+          "remarks": "Applies to entire pickup operation.",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Port Congestion",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 15.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "THC",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 78.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Terminal Timeslot Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 30.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 75.0,
+          "remarks": "Electronic Issue",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Documentation Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 80.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Export Clearance",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 70.0,
+          "remarks": "Export customs document, 10EUR/extra HS Code",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Origin Handling",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 95.0,
+          "remarks": "FOB Charges",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 343.55,
+          "remarks": "Rates inclusive of THCL/CAF/BAF/SUEZ/ADEN GULF/ISPS/OW/LR/BK/CO/TAD/EU",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "BAF",
+          "currency": "EUR",
+          "unit_of_measurement": "Per TEU",
+          "rate": 86.1,
+          "remarks": "Emergency Bunker Surcharge, converted from 50 USD/TEU (2 TEU for 40ft HC)",
+          "if_applicable": false
+        }
+      ]
+    }
+  ]
+}
+
+======================================================================
+FILE: SKY RTM-Q-003271 RTM-Q-003277
+======================================================================
+{
+  "vendor_name": "SkyWave Cargo B.V.",
+  "shipping_lines": [
+    {
+      "shipping_line": "",
+      "container_type": "20ft GP",
+      "etd": "",
+      "transit_days": "37 days",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 946.0,
+          "remarks": "As Per Details - Per Container DROP+PICK UP",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "BAF",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 331.1,
+          "remarks": "Fuel Surcharge (Monthly updated); subject to weekly updates, contact vendor for current rate. All additional charges are not fixed and are, therefore, subject to fluctuation.",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Port Security",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 25.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 75.0,
+          "remarks": "Per Booking",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "USD",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 750.0,
+          "remarks": "Subject to space and equipment availability. All additional charges are not fixed and are, therefore, subject to fluctuation.",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "",
+      "container_type": "40ft HC",
+      "etd": "",
+      "transit_days": "37 days",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 946.0,
+          "remarks": "As Per Details - Per Container DROP+PICK UP",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "BAF",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 331.1,
+          "remarks": "Fuel Surcharge (Monthly updated); subject to weekly updates, contact vendor for current rate. All additional charges are not fixed and are, therefore, subject to fluctuation.",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Port Security",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 25.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 75.0,
+          "remarks": "Per Booking",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "USD",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 675.0,
+          "remarks": "Subject to space and equipment availability. All additional charges are not fixed and are, therefore, subject to fluctuation.",
+          "if_applicable": false
+        }
+      ]
+    }
+  ]
+}
+
+======================================================================
+FILE: VOL  VLST-05261816
+======================================================================
+{
+  "vendor_name": "Volantis Logistics",
+  "shipping_lines": [
+    {
+      "shipping_line": "CMA CGM",
+      "container_type": "20ft GP",
+      "etd": "2026-06-10",
+      "transit_days": "41 days direct",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "USD",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 1550.0,
+          "remarks": "All-in rate including Ocean Freight, Origin Local Charges, Trucking Fee, B/L Fee, Documentation Fee, Export Customs Clearance (valid for one HS code per container; additional 15 EUR per HS code per container applies thereafter). Excludes: VGM Weighing Fee, Destination Local Charges, Demurrage, Storage, Duty, Tax. Spot Rate. Subject to approval. PSS/GRI adjustments may apply after booking. Weekly fuel surcharge may apply for trucking. Truck detention free time is 2 hours, then 50 EUR per each half an hour. Rates subject to space/equipment availability and minute-to-minute change; can be secured via booking (penalty for amendment/cancellation).",
+          "if_applicable": true
+        }
+      ]
+    },
+    {
+      "shipping_line": "CMA CGM",
+      "container_type": "40ft HC",
+      "etd": "2026-06-10",
+      "transit_days": "41 days direct",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "USD",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 1600.0,
+          "remarks": "All-in rate including Ocean Freight, Origin Local Charges, Trucking Fee, B/L Fee, Documentation Fee, Export Customs Clearance (valid for one HS code per container; additional 15 EUR per HS code per container applies thereafter). Excludes: VGM Weighing Fee, Destination Local Charges, Demurrage, Storage, Duty, Tax. Spot Rate. Subject to approval. PSS/GRI adjustments may apply after booking. Weekly fuel surcharge may apply for trucking. Truck detention free time is 2 hours, then 50 EUR per each half an hour. Rates subject to space/equipment availability and minute-to-minute change; can be secured via booking (penalty for amendment/cancellation).",
+          "if_applicable": true
+        }
+      ]
+    },
+    {
+      "shipping_line": "CMA CGM",
+      "container_type": "20ft GP",
+      "etd": "2026-06-10",
+      "transit_days": "36 days direct",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "USD",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 1550.0,
+          "remarks": "All-in rate including Ocean Freight, Origin Local Charges, Trucking Fee, B/L Fee, Documentation Fee, Export Customs Clearance (valid for one HS code per container; additional 15 EUR per HS code per container applies thereafter). Excludes: VGM Weighing Fee, Destination Local Charges, Demurrage, Storage, Duty, Tax. Spot Rate. Subject to approval. PSS/GRI adjustments may apply after booking. Weekly fuel surcharge may apply for trucking. Truck detention free time is 2 hours, then 50 EUR per each half an hour. Rates subject to space/equipment availability and minute-to-minute change; can be secured via booking (penalty for amendment/cancellation).",
+          "if_applicable": true
+        }
+      ]
+    },
+    {
+      "shipping_line": "CMA CGM",
+      "container_type": "40ft HC",
+      "etd": "2026-06-10",
+      "transit_days": "36 days direct",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "USD",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 1600.0,
+          "remarks": "All-in rate including Ocean Freight, Origin Local Charges, Trucking Fee, B/L Fee, Documentation Fee, Export Customs Clearance (valid for one HS code per container; additional 15 EUR per HS code per container applies thereafter). Excludes: VGM Weighing Fee, Destination Local Charges, Demurrage, Storage, Duty, Tax. Spot Rate. Subject to approval. PSS/GRI adjustments may apply after booking. Weekly fuel surcharge may apply for trucking. Truck detention free time is 2 hours, then 50 EUR per each half an hour. Rates subject to space/equipment availability and minute-to-minute change; can be secured via booking (penalty for amendment/cancellation).",
+          "if_applicable": true
+        }
+      ]
+    }
+  ]
+}
+
+======================================================================
+FILE: ROT  105300 A.Z.
+======================================================================
+{
+  "vendor_name": "Rotra Air & Ocean BV",
+  "shipping_lines": [
+    {
+      "shipping_line": "Yang Ming",
+      "container_type": "20ft GP",
+      "etd": "",
+      "transit_days": "",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 52.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "THC",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 275.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Port Security",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 17.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Export Clearance",
+          "currency": "EUR",
+          "unit_of_measurement": "Lumpsum",
+          "rate": 82.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Documentation Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Lumpsum",
+          "rate": 60.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "VGM Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Lumpsum",
+          "rate": 12.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 440.0,
+          "remarks": "Trucking from Beusichem to Rotterdam",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Fuel Surcharge",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 180.4,
+          "remarks": "41% of trucking rate (440 EUR)",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Port Congestion",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 22.0,
+          "remarks": "Terminal congestion surcharge",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Origin Time Slot Surcharge",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 34.0,
+          "remarks": "Per round trip",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 150.88,
+          "remarks": "To Mundra (INMUN), converted from 175.00 USD/container at 1.1599 USD/EUR exchange rate",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "Yang Ming",
+      "container_type": "40ft GP",
+      "etd": "",
+      "transit_days": "",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 52.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "THC",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 275.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Port Security",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 17.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Export Clearance",
+          "currency": "EUR",
+          "unit_of_measurement": "Lumpsum",
+          "rate": 82.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Documentation Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Lumpsum",
+          "rate": 60.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "VGM Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Lumpsum",
+          "rate": 12.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 440.0,
+          "remarks": "Trucking from Beusichem to Rotterdam",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Fuel Surcharge",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 180.4,
+          "remarks": "41% of trucking rate (440 EUR)",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Port Congestion",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 22.0,
+          "remarks": "Terminal congestion surcharge",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Origin Time Slot Surcharge",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 34.0,
+          "remarks": "Per round trip",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 150.88,
+          "remarks": "To Mundra (INMUN), converted from 175.00 USD/container at 1.1599 USD/EUR exchange rate",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "Yang Ming",
+      "container_type": "40ft HC",
+      "etd": "",
+      "transit_days": "",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 52.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "THC",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 275.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Port Security",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 17.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Export Clearance",
+          "currency": "EUR",
+          "unit_of_measurement": "Lumpsum",
+          "rate": 82.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Documentation Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Lumpsum",
+          "rate": 60.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "VGM Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Lumpsum",
+          "rate": 12.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 440.0,
+          "remarks": "Trucking from Beusichem to Rotterdam",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Fuel Surcharge",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 180.4,
+          "remarks": "41% of trucking rate (440 EUR)",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Port Congestion",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 22.0,
+          "remarks": "Terminal congestion surcharge",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Origin Time Slot Surcharge",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 34.0,
+          "remarks": "Per round trip",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 150.88,
+          "remarks": "To Mundra (INMUN), converted from 175.00 USD/container at 1.1599 USD/EUR exchange rate",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "Yang Ming",
+      "container_type": "20ft GP",
+      "etd": "",
+      "transit_days": "",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 52.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "THC",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 275.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Port Security",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 17.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Export Clearance",
+          "currency": "EUR",
+          "unit_of_measurement": "Lumpsum",
+          "rate": 82.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Documentation Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Lumpsum",
+          "rate": 60.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "VGM Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Lumpsum",
+          "rate": 12.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 440.0,
+          "remarks": "Trucking from Beusichem to Rotterdam",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Fuel Surcharge",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 180.4,
+          "remarks": "41% of trucking rate (440 EUR)",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Port Congestion",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 22.0,
+          "remarks": "Terminal congestion surcharge",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Origin Time Slot Surcharge",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 34.0,
+          "remarks": "Per round trip",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 172.43,
+          "remarks": "To Nhava Sheva (INNSA), converted from 200.00 USD/container at 1.1599 USD/EUR exchange rate",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "Yang Ming",
+      "container_type": "40ft GP",
+      "etd": "",
+      "transit_days": "",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 52.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "THC",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 275.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Port Security",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 17.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Export Clearance",
+          "currency": "EUR",
+          "unit_of_measurement": "Lumpsum",
+          "rate": 82.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Documentation Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Lumpsum",
+          "rate": 60.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "VGM Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Lumpsum",
+          "rate": 12.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 440.0,
+          "remarks": "Trucking from Beusichem to Rotterdam",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Fuel Surcharge",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 180.4,
+          "remarks": "41% of trucking rate (440 EUR)",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Port Congestion",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 22.0,
+          "remarks": "Terminal congestion surcharge",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Origin Time Slot Surcharge",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 34.0,
+          "remarks": "Per round trip",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft)",
+          "rate": 172.43,
+          "remarks": "To Nhava Sheva (INNSA), converted from 200.00 USD/container at 1.1599 USD/EUR exchange rate",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "Yang Ming",
+      "container_type": "40ft HC",
+      "etd": "",
+      "transit_days": "",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 52.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "THC",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 275.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Port Security",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 17.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Export Clearance",
+          "currency": "EUR",
+          "unit_of_measurement": "Lumpsum",
+          "rate": 82.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Documentation Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Lumpsum",
+          "rate": 60.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "VGM Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Lumpsum",
+          "rate": 12.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 440.0,
+          "remarks": "Trucking from Beusichem to Rotterdam",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Fuel Surcharge",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 180.4,
+          "remarks": "41% of trucking rate (440 EUR)",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Port Congestion",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 22.0,
+          "remarks": "Terminal congestion surcharge",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Origin Time Slot Surcharge",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 34.0,
+          "remarks": "Per round trip",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 172.43,
+          "remarks": "To Nhava Sheva (INNSA), converted from 200.00 USD/container at 1.1599 USD/EUR exchange rate",
+          "if_applicable": false
+        }
+      ]
+    }
+  ]
+}
+
+======================================================================
+FILE: SAN
+======================================================================
+{
+  "vendor_name": "Santova",
+  "shipping_lines": [
+    {
+      "shipping_line": "",
+      "container_type": "20ft GP",
+      "etd": "",
+      "transit_days": "",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 558.0,
+          "remarks": "FCL 2 hours free for collection included. Thereafter € 70,- per hour / part of an hour.",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Export Clearance",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 68.5,
+          "remarks": "Incl 2 HS code additional EUR 5.50 per HS code",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 68.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "VGM Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 27.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "USD",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 730.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "Destination Charges",
+          "name_of_charge": "Free Time Destination",
+          "currency": "USD",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 100.0,
+          "remarks": "for 14 days free time",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "",
+      "container_type": "40ft HC",
+      "etd": "",
+      "transit_days": "",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 558.0,
+          "remarks": "FCL 2 hours free for collection included. Thereafter € 70,- per hour / part of an hour.",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Export Clearance",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 68.5,
+          "remarks": "Incl 2 HS code additional EUR 5.50 per HS code",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 68.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "VGM Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 27.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "USD",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 575.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "Destination Charges",
+          "name_of_charge": "Free Time Destination",
+          "currency": "USD",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 100.0,
+          "remarks": "for 14 days free time",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "",
+      "container_type": "20ft GP",
+      "etd": "",
+      "transit_days": "",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 558.0,
+          "remarks": "FCL 2 hours free for collection included. Thereafter € 70,- per hour / part of an hour.",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Export Clearance",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 68.5,
+          "remarks": "Incl 2 HS code additional EUR 5.50 per HS code",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 68.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "VGM Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 27.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "USD",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 730.0,
+          "remarks": "(same as POD Nhava Sheva)",
+          "if_applicable": false
+        },
+        {
+          "category": "Destination Charges",
+          "name_of_charge": "Free Time Destination",
+          "currency": "USD",
+          "unit_of_measurement": "Per Container (20ft)",
+          "rate": 100.0,
+          "remarks": "for 14 days free time",
+          "if_applicable": false
+        }
+      ]
+    },
+    {
+      "shipping_line": "",
+      "container_type": "40ft HC",
+      "etd": "",
+      "transit_days": "",
+      "free_days_origin": 0,
+      "free_days_destination": 14,
+      "charges": [
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Pre-carriage",
+          "currency": "EUR",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 558.0,
+          "remarks": "FCL 2 hours free for collection included. Thereafter € 70,- per hour / part of an hour.",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "Export Clearance",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 68.5,
+          "remarks": "Incl 2 HS code additional EUR 5.50 per HS code",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "B/L Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 68.0,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "EXW / Origin Charges",
+          "name_of_charge": "VGM Fee",
+          "currency": "EUR",
+          "unit_of_measurement": "Per BL",
+          "rate": 27.5,
+          "remarks": "",
+          "if_applicable": false
+        },
+        {
+          "category": "FCL (Ocean Freight)",
+          "name_of_charge": "Ocean Freight",
+          "currency": "USD",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 575.0,
+          "remarks": "(sames as POD Nhava Sheva)",
+          "if_applicable": false
+        },
+        {
+          "category": "Destination Charges",
+          "name_of_charge": "Free Time Destination",
+          "currency": "USD",
+          "unit_of_measurement": "Per Container (40ft HC)",
+          "rate": 100.0,
+          "remarks": "for 14 days free time",
+          "if_applicable": false
+        }
+      ]
+    }
+  ]
+}
